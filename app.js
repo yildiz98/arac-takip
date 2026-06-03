@@ -36,10 +36,12 @@ function init(){
   $('clearService').onclick = clearServiceForm;
   $('vehicleSearch').oninput = renderVehicles;
   $('historySearch').oninput = renderHistory;
-  $('accountSearch').oninput = renderAccounts;
-  $('paymentForm').onsubmit = savePayment;
-  $('clearPayment').onclick = clearPaymentForm;
-  $('paymentDate').value = today();
+  if($('accountSearch')) $('accountSearch').oninput = renderAccounts;
+  if($('paymentForm')) {
+    $('paymentForm').addEventListener('submit', savePayment);
+  }
+  if($('clearPayment')) $('clearPayment').onclick = clearPaymentForm;
+  if($('paymentDate')) $('paymentDate').value = today();
   $('exportBtn').onclick = exportData;
   $('importFile').onchange = importData;
   setupInstall(); registerSW(); watchAuth();
@@ -59,7 +61,7 @@ function watchAuth(){
     currentUser = user;
     if(!user){
       $('loginView').classList.remove('hidden'); $('appView').classList.add('hidden'); $('logoutBtn').classList.add('hidden'); $('userInfo').textContent='Giriş bekleniyor';
-      if(unsubVehicles) unsubVehicles(); if(unsubServices) unsubServices(); if(unsubPayments) unsubPayments(); if(unsubPayments) unsubPayments();
+      if(unsubVehicles) unsubVehicles(); if(unsubServices) unsubServices(); if(unsubPayments) unsubPayments();
       return;
     }
     role = user.email && user.email.startsWith('admin') ? 'admin' : 'personel';
@@ -71,7 +73,7 @@ function listenData(){
   if(unsubVehicles) unsubVehicles(); if(unsubServices) unsubServices(); if(unsubPayments) unsubPayments();
   unsubVehicles = onSnapshot(query(collection(fs,'vehicles'), orderBy('plate')), snap=>{ vehicles=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
   unsubServices = onSnapshot(query(collection(fs,'services'), orderBy('date','desc')), snap=>{ services=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
-  unsubPayments = onSnapshot(query(collection(fs,'payments'), orderBy('date','desc')), snap=>{ payments=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
+  unsubPayments = onSnapshot(query(collection(fs,'payments'), orderBy('date','desc')), snap=>{ payments=snap.docs.map(d=>({id:d.id,...d.data()})); render(); }, err=>{ console.error('payments okunamadı', err); alert('Cari kayıtlar okunamadı: ' + err.message); });
 }
 
 async function saveVehicle(e){
@@ -337,17 +339,46 @@ function filterCustomerHistory(key){
   renderHistory();
 }
 async function savePayment(e){
-  e.preventDefault();
-  const amount = +$('paymentAmount').value || 0;
-  if(amount <= 0) return alert('Tutar girmen gerekiyor.');
-  const owner = $('paymentOwner').value.trim();
-  if(!owner) return alert('Müşteri adı zorunlu.');
-  const phone = $('paymentPhone').value.trim();
-  const key = $('paymentCustomerKey').value || (owner + '|' + phone.replace(/\D/g,'')).toLocaleLowerCase('tr-TR');
-  await addDoc(collection(fs,'payments'), {customerKey:key, owner, phone, type:$('paymentType').value, amount, date:$('paymentDate').value||today(), note:$('paymentNote').value.trim(), createdAt:serverTimestamp(), updatedBy:currentUser.email});
-  clearPaymentForm();
+  if(e) { e.preventDefault(); e.stopPropagation(); }
+
+  const btn = e?.submitter || document.querySelector('#paymentForm button[type=\"submit\"]');
+  try{
+    const amount = +$('paymentAmount').value || 0;
+    if(amount <= 0) return alert('Tutar girmen gerekiyor.');
+
+    const owner = $('paymentOwner').value.trim();
+    if(!owner) return alert('Müşteri adı zorunlu.');
+
+    const phone = $('paymentPhone').value.trim();
+    const key = $('paymentCustomerKey').value || (owner + '|' + phone.replace(/\D/g,'')).toLocaleLowerCase('tr-TR');
+
+    if(btn) { btn.disabled = true; btn.textContent = 'Kaydediliyor...'; }
+
+    await addDoc(collection(fs,'payments'), {
+      customerKey:key,
+      owner,
+      phone,
+      type:$('paymentType').value,
+      amount,
+      date:$('paymentDate').value||today(),
+      note:$('paymentNote').value.trim(),
+      createdAt:serverTimestamp(),
+      updatedBy:currentUser.email
+    });
+
+    clearPaymentForm();
+    alert('Cari işlem kaydedildi.');
+    renderAccounts();
+  }catch(err){
+    console.error('Cari işlem kaydedilemedi:', err);
+    alert('Cari işlem kaydedilemedi: ' + (err?.message || err));
+  }finally{
+    if(btn) { btn.disabled = false; btn.textContent = 'Cari İşlemi Kaydet'; }
+  }
+
+  return false;
 }
-function clearPaymentForm(){ ['paymentCustomerKey','paymentOwner','paymentPhone','paymentAmount','paymentNote'].forEach(id=>$(id).value=''); $('paymentType').value='payment'; $('paymentDate').value=today(); }
+function clearPaymentForm(){ ['paymentCustomerKey','paymentOwner','paymentPhone','paymentAmount','paymentNote'].forEach(id=>{ if($(id)) $(id).value=''; }); if($('paymentType')) $('paymentType').value='payment'; if($('paymentDate')) $('paymentDate').value=today(); }
 async function deletePayment(id){ if(!canDelete()) return alert('Silme yetkisi sadece adminde.'); if(confirm('Cari hareket silinsin mi?')) await deleteDoc(doc(fs,'payments',id)); }
 function escAttr(v){ return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 
