@@ -1,1 +1,14 @@
-{"name":"Araç Servis Takip","short_name":"Servis Takip","start_url":"./","display":"standalone","background_color":"#f3f4f6","theme_color":"#111827","icons":[{"src":"icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icon-512.png","sizes":"512x512","type":"image/png"}]}
+{
+  "name": "HİÇKORKMAZ GARAJ",
+  "short_name": "HİÇKORKMAZ",
+  "description": "Araç Servis ve Cari Takip Sistemi",
+  "start_url": "./?v=6",
+  "display": "standalone",
+  "background_color": "#0b348d",
+  "theme_color": "#0b348d",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
