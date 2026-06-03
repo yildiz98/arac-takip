@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>Araç Takip Programı</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Araç Takip</p>
+      <h1>Araç & Servis Kayıt</h1>
+    </div>
+    <button id="installBtn" class="ghost hidden">Yükle</button>
+  </header>
+
+  <main>
+    <section class="cards" id="dashboardCards">
+      <article class="card"><span>Toplam Araç</span><strong id="totalVehicles">0</strong></article>
+      <article class="card"><span>Servis Kaydı</span><strong id="totalServices">0</strong></article>
+      <article class="card"><span>Toplam Masraf</span><strong id="totalCost">0 ₺</strong></article>
+      <article class="card danger"><span>Yaklaşan Bakım</span><strong id="dueCount">0</strong></article>
+    </section>
+
+    <nav class="tabs" aria-label="Bölümler">
+      <button class="tab active" data-tab="vehicles">Araçlar</button>
+      <button class="tab" data-tab="service">Servis</button>
+      <button class="tab" data-tab="history">Geçmiş</button>
+      <button class="tab" data-tab="accounts">Cari</button>
+      <button class="tab" data-tab="backup">Yedek</button>
+    </nav>
+
+    <section id="vehicles" class="panel active">
+      <div class="section-head">
+        <h2>Araç Kaydı</h2>
+        <input id="vehicleSearch" type="search" placeholder="Plaka, marka veya müşteri ara" />
+      </div>
+      <form id="vehicleForm" class="form-grid">
+        <input type="hidden" id="vehicleId" />
+        <label>Plaka<input id="plate" required placeholder="Örn: AB 123" /></label>
+        <label>Marka / Model<input id="model" placeholder="Örn: Toyota Corolla" /></label>
+        <label>Ruhsat Sahibi<input id="owner" placeholder="Müşteri adı" /></label>
+        <label>Telefon<input id="phone" type="tel" placeholder="Telefon" /></label>
+        <label>İlk Kayıt KM<input id="firstKm" type="number" min="0" placeholder="0" /></label>
+        <label>Son Servis KM<input id="lastServiceKm" type="number" min="0" placeholder="0" /></label>
+        <label>Sonraki Servis KM<input id="nextServiceKm" type="number" min="0" placeholder="10000" /></label>
+        <label class="wide">Not<textarea id="vehicleNote" rows="2" placeholder="Araç hakkında not"></textarea></label>
+        <button type="submit" class="primary">Araç Kaydet</button>
+        <button type="button" id="clearVehicle" class="ghost">Temizle</button>
+      </form>
+      <div id="vehicleList" class="list"></div>
+    </section>
+
+    <section id="service" class="panel">
+      <div class="section-head"><h2>Servis İşlemi</h2><p>Plaka seç, yapılan işlemi kayıt altına al.</p></div>
+      <form id="serviceForm" class="form-grid">
+        <input type="hidden" id="serviceId" />
+        <label>Plaka<select id="serviceVehicle" required></select></label>
+        <label>Servise Geldiği KM<input id="serviceKm" type="number" min="0" required /></label>
+        <label>Tarih<input id="serviceDate" type="date" required /></label>
+        <label>İşlem / Parça<input id="serviceItem" required placeholder="Yağ, filtre, balata..." /></label>
+        <label>Durum<select id="serviceStatus"><option>Değişti</option><option>Değişmedi</option><option>Kontrol Edildi</option><option>Bakım Yapıldı</option></select></label>
+        <label>Ücret<input id="servicePrice" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label class="wide">Açıklama<textarea id="serviceNote" rows="2" placeholder="Yapılan işlem detayı"></textarea></label>
+        <button type="submit" class="primary">Servis Kaydet</button>
+        <button type="button" id="clearService" class="ghost">Temizle</button>
+      </form>
+      <div class="hint">Servis kaydı girilince aracın son servis km bilgisi otomatik güncellenir.</div>
+    </section>
+
+    <section id="history" class="panel">
+      <div class="section-head">
+        <h2>Servis Geçmişi</h2>
+        <input id="historySearch" type="search" placeholder="Plaka veya işlem ara" />
+      </div>
+      <div id="historyList" class="list"></div>
+    </section>
+
+    <section id="accounts" class="panel">
+      <div class="section-head"><h2>Cari Hesap</h2><p>Plakaya göre toplam masraf ve kayıtlar.</p></div>
+      <div id="accountList" class="list"></div>
+    </section>
+
+    <section id="backup" class="panel">
+      <div class="section-head"><h2>Yedek / Geri Yükle</h2><p>Telefon değişirse verileri kaybetmemek için yedek al.</p></div>
+      <div class="backup-actions">
+        <button id="exportBtn" class="primary">JSON Yedek Al</button>
+        <label class="file-btn">Yedekten Yükle<input id="importFile" type="file" accept="application/json" hidden /></label>
+        <button id="wipeBtn" class="danger-btn">Tüm Verileri Sil</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>PM. Hüseyin YILDIZ • Veriler bu cihazda saklanır</footer>
+  <script src="app.js"></script>
+</body>
+</html>
