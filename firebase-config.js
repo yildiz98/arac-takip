@@ -1,9 +1,8 @@
-// Firebase Console > Project settings > General > SDK setup bilgilerini buraya yapıştır.
 export const firebaseConfig = {
-  apiKey: "BURAYA_API_KEY",
+  apiKey: "AIzaSyD-790uItEQbAvm_G5itv7oVqExn4zFEiY",
   authDomain: "arac-servis-takip-c707b.firebaseapp.com",
   projectId: "arac-servis-takip-c707b",
   storageBucket: "arac-servis-takip-c707b.firebasestorage.app",
-  messagingSenderId: "BURAYA_MESSAGING_SENDER_ID",
-  appId: "BURAYA_APP_ID"
+  messagingSenderId: "494798332130",
+  appId: "1:494798332130:web:336ed610cf651fcf95febb"
 };
