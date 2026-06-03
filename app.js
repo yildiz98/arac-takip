@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
@@ -28,6 +28,8 @@ function init(){
   $('logoutBtn').onclick = () => signOut(auth);
   $('vehicleForm').onsubmit = saveVehicle;
   $('serviceForm').onsubmit = saveService;
+  $('servicePlateSearch').oninput = handleServicePlateSearch;
+  $('serviceVehicle').onchange = renderSelectedVehicleInfo;
   $('clearVehicle').onclick = clearVehicleForm;
   $('clearService').onclick = clearServiceForm;
   $('vehicleSearch').oninput = renderVehicles;
@@ -41,13 +43,11 @@ function switchTab(id){
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===id));
 }
-
 async function login(e){
   e.preventDefault();
   try { await signInWithEmailAndPassword(auth, $('email').value.trim(), $('password').value); }
   catch(err){ alert('Giriş başarısız: ' + err.message); }
 }
-
 function watchAuth(){
   onAuthStateChanged(auth, async user => {
     currentUser = user;
@@ -61,7 +61,6 @@ function watchAuth(){
     listenData();
   });
 }
-
 function listenData(){
   if(unsubVehicles) unsubVehicles(); if(unsubServices) unsubServices();
   unsubVehicles = onSnapshot(query(collection(fs,'vehicles'), orderBy('plate')), snap=>{ vehicles=snap.docs.map(d=>({id:d.id,...d.data()})); render(); });
@@ -89,9 +88,14 @@ async function deleteVehicle(id){ if(!canDelete()) return alert('Silme yetkisi s
 
 async function saveService(e){
   e.preventDefault();
-  const vehicleId = $('serviceVehicle').value;
-  const vehicle = vehicles.find(v=>v.id===vehicleId);
-  if(!vehicle) return alert('Önce araç kaydı ekle.');
+  const typedPlate = plateClean($('servicePlateSearch').value);
+  let vehicleId = $('serviceVehicle').value;
+  let vehicle = vehicles.find(v=>v.id===vehicleId);
+  if(typedPlate){
+    const found = vehicles.find(v=>plateClean(v.plate)===typedPlate);
+    if(found){ vehicle = found; vehicleId = found.id; $('serviceVehicle').value = found.id; }
+  }
+  if(!vehicle) return alert('Plaka bulunamadı. Önce araç kartını oluştur veya kayıtlı plakayı seç.');
   const id = $('serviceId').value;
   const km = +$('serviceKm').value || 0;
   const date = $('serviceDate').value || today();
@@ -104,65 +108,86 @@ async function saveService(e){
   };
   if(id) await setDoc(doc(fs,'services',id), data, {merge:true}); else await addDoc(collection(fs,'services'), {...data, createdAt:serverTimestamp()});
   const updateVehicle = { currentKm: Math.max(vehicle.currentKm||0, km), lastServiceDate: date, updatedAt:serverTimestamp() };
-  if(!vehicle.nextServiceKm || km >= (vehicle.nextServiceKm - 1000)) updateVehicle.nextServiceKm = km + 10000;
   await setDoc(doc(fs,'vehicles',vehicleId), updateVehicle, {merge:true});
   clearServiceForm();
 }
-function clearServiceForm(){['serviceId','serviceKm','serviceNote','laborCost','partsCost'].forEach(id=>$(id).value=''); ['oil','oilFilter','airFilter','pollenFilter','brakePad','battery','tire'].forEach(id=>$(id).value='değişmedi'); $('serviceDate').value=today();}
-function editService(id){const s=services.find(x=>x.id===id); if(!s)return; $('serviceId').value=s.id;$('serviceVehicle').value=s.vehicleId;$('serviceKm').value=s.km||'';$('serviceDate').value=s.date||today();$('oil').value=s.oil||'değişmedi';$('oilFilter').value=s.oilFilter||'değişmedi';$('airFilter').value=s.airFilter||'değişmedi';$('pollenFilter').value=s.pollenFilter||'değişmedi';$('brakePad').value=s.brakePad||'değişmedi';$('battery').value=s.battery||'değişmedi';$('tire').value=s.tire||'değişmedi';$('serviceNote').value=s.note||'';$('laborCost').value=s.laborCost||'';$('partsCost').value=s.partsCost||''; switchTab('service'); window.scrollTo({top:0,behavior:'smooth'});}
+function clearServiceForm(){['serviceId','serviceKm','serviceNote','laborCost','partsCost','servicePlateSearch'].forEach(id=>$(id).value=''); ['oil','oilFilter','airFilter','pollenFilter','brakePad','battery','tire'].forEach(id=>$(id).value='değişmedi'); $('serviceDate').value=today(); renderSelectedVehicleInfo();}
+function editService(id){const s=services.find(x=>x.id===id); if(!s)return; $('serviceId').value=s.id;$('serviceVehicle').value=s.vehicleId;$('serviceKm').value=s.km||'';$('serviceDate').value=s.date||today();$('oil').value=s.oil||'değişmedi';$('oilFilter').value=s.oilFilter||'değişmedi';$('airFilter').value=s.airFilter||'değişmedi';$('pollenFilter').value=s.pollenFilter||'değişmedi';$('brakePad').value=s.brakePad||'değişmedi';$('battery').value=s.battery||'değişmedi';$('tire').value=s.tire||'değişmedi';$('serviceNote').value=s.note||'';$('laborCost').value=s.laborCost||'';$('partsCost').value=s.partsCost||''; const v=vehicles.find(x=>x.id===s.vehicleId); if(v){$('servicePlateSearch').value=v.plate;} renderSelectedVehicleInfo(); switchTab('service'); window.scrollTo({top:0,behavior:'smooth'});}
 async function deleteService(id){ if(!canDelete()) return alert('Silme yetkisi sadece adminde.'); if(confirm('Servis kaydı silinsin mi?')) await deleteDoc(doc(fs,'services',id)); }
 
 function render(){renderSelect(); renderDashboard(); renderVehicles(); renderHistory();}
 function renderDashboard(){
   $('totalVehicles').textContent=vehicles.length; $('totalServices').textContent=services.length; $('totalCost').textContent=money(services.reduce((a,s)=>a+serviceTotal(s),0));
-  const due=vehicles.filter(isDue); $('dueCount').textContent=due.length;
-  $('dueList').innerHTML=due.length?due.map(v=>vehicleCard(v, true)).join(''):'<div class="empty">Yaklaşan bakım yok.</div>';
+  const listed=vehicles.filter(v=>v.nextServiceKm); $('dueCount').textContent=listed.length;
+  $('dueList').innerHTML=listed.length?listed.map(v=>vehicleCard(v, true)).join(''):'<div class="empty">Gelecek servis KM kaydı yok.</div>';
 }
-function isDue(v){ return v.nextServiceKm && v.currentKm && (v.nextServiceKm - v.currentKm <= 3000); }
-function dueClass(v){
-  if(!v.nextServiceKm || !v.currentKm) return 'ok';
-  const kalan = v.nextServiceKm - v.currentKm;
-  if(kalan <= 1000) return 'warn';
-  if(kalan <= 3000) return 'near';
-  return 'ok';
+function isDue(v){ return false; }
+function renderSelect(){
+  const selected = $('serviceVehicle').value;
+  $('serviceVehicle').innerHTML = vehicles.length ? vehicles.map(v=>`<option value="${v.id}">${esc(v.plate)} - ${esc(v.model||'Araç')}</option>`).join('') : '<option value="">Önce araç ekle</option>';
+  $('plateOptions').innerHTML = vehicles.map(v=>`<option value="${esc(v.plate)}">${esc(v.model||'Araç')} - ${esc(v.owner||'-')}</option>`).join('');
+  if(selected && vehicles.some(v=>v.id===selected)) $('serviceVehicle').value = selected;
+  renderSelectedVehicleInfo();
 }
-function dueText(v){
-  if(!v.nextServiceKm || !v.currentKm) return 'Normal';
-  const kalan = v.nextServiceKm - v.currentKm;
-  if(kalan <= 1000) return 'Acil Bakım';
-  if(kalan <= 3000) return 'Bakım Yakın';
-  return 'Normal';
-}
-function renderSelect(){ $('serviceVehicle').innerHTML = vehicles.length ? vehicles.map(v=>`<option value="${v.id}">${esc(v.plate)} - ${esc(v.model||'Araç')}</option>`).join('') : '<option value="">Önce araç ekle</option>'; }
 function renderVehicles(){ const q=($('vehicleSearch').value||'').toLocaleLowerCase('tr-TR'); const data=vehicles.filter(v=>[v.plate,v.model,v.owner,v.phone].join(' ').toLocaleLowerCase('tr-TR').includes(q)); $('vehicleList').innerHTML=data.length?data.map(v=>vehicleCard(v)).join(''):'<div class="empty">Kayıt bulunamadı.</div>'; }
-function vehicleCard(v, compact=false){ const ss=services.filter(s=>s.vehicleId===v.id); const total=ss.reduce((a,s)=>a+serviceTotal(s),0); const remaining = (v.nextServiceKm||0) - (v.currentKm||0); return `<article class="item"><div class="item-top"><div><h3>${esc(v.plate)}</h3><div class="meta">${esc(v.model||'-')} • ${esc(v.owner||'-')}<br>Mevcut KM: ${v.currentKm||0} • Sonraki bakım: ${v.nextServiceKm||0}<br>Kalan KM: ${remaining > 0 ? remaining : 0}<br>Son servis: ${v.lastServiceDate||'-'} • Toplam: ${money(total)}</div></div><span class="badge ${dueClass(v)}">${dueText(v)}</span></div>${compact?'':`<div class="actions"><button onclick="showVehicleHistory('${v.id}')">Geçmiş</button><button onclick="editVehicle('${v.id}')">Düzenle</button>${canDelete()?`<button class="dangerBtn" onclick="deleteVehicle('${v.id}')">Sil</button>`:''}</div>`}</article>`; }
+function vehicleCard(v, compact=false){ const ss=services.filter(s=>s.vehicleId===v.id); const total=ss.reduce((a,s)=>a+serviceTotal(s),0); return `<article class="item"><div class="item-top"><div><h3>${esc(v.plate)}</h3><div class="meta">${esc(v.model||'-')} • ${esc(v.owner||'-')}<br>Mevcut KM: ${v.currentKm||0} • Gelecek servis KM: ${v.nextServiceKm||0}<br>Son servis: ${v.lastServiceDate||'-'} • Toplam: ${money(total)}</div></div><span class="badge ok">${ss.length} servis</span></div>${compact?'':`<div class="actions"><button onclick="openService('${v.id}')">Servis Aç</button><button onclick="showVehicleHistory('${v.id}')">Geçmiş</button><button onclick="editVehicle('${v.id}')">Düzenle</button>${canDelete()?`<button class="dangerBtn" onclick="deleteVehicle('${v.id}')">Sil</button>`:''}</div>`}</article>`; }
 function showVehicleHistory(id){const v=vehicles.find(x=>x.id===id); if(!v)return; switchTab('history'); $('historySearch').value=v.plate; renderHistory();}
 function renderHistory(){ const q=($('historySearch').value||'').toLocaleLowerCase('tr-TR'); const data=services.filter(s=>[s.plate,s.note,s.oil,s.oilFilter,s.airFilter,s.pollenFilter,s.brakePad,s.battery,s.tire].join(' ').toLocaleLowerCase('tr-TR').includes(q)); $('historyList').innerHTML=data.length?data.map(serviceCard).join(''):'<div class="empty">Servis kaydı bulunamadı.</div>'; }
 function serviceCard(s){ const parts=[['Yağ',s.oil],['Yağ filtresi',s.oilFilter],['Hava filtresi',s.airFilter],['Polen filtresi',s.pollenFilter],['Fren balatası',s.brakePad],['Akü',s.battery],['Lastik',s.tire]].map(([k,v])=>`${k}: ${v||'değişmedi'}`).join(' • '); return `<article class="item"><div class="item-top"><div><h3>${esc(s.plate)} - ${s.date||''}</h3><div class="meta">${s.km||0} km<br>${esc(parts)}<br>${esc(s.note||'')}</div></div><span class="badge">${money(serviceTotal(s))}</span></div><div class="actions"><button onclick="sendWhatsApp('${s.id}')">WhatsApp</button><button onclick="generatePDF('${s.id}')">PDF</button><button onclick="editService('${s.id}')">Düzenle</button>${canDelete()?`<button class="dangerBtn" onclick="deleteService('${s.id}')">Sil</button>`:''}</div></article>`; }
 
-function buildServiceText(s){
-  const vehicle = vehicles.find(v => v.id === s.vehicleId) || {};
-  return `Araç Servis Bilgilendirmesi\n\nPlaka: ${s.plate}\nRuhsat Sahibi: ${vehicle.owner || '-'}\nTelefon: ${vehicle.phone || '-'}\nTarih: ${s.date || '-'}\nKM: ${s.km || 0}\n\nYağ: ${s.oil || 'değişmedi'}\nYağ Filtresi: ${s.oilFilter || 'değişmedi'}\nHava Filtresi: ${s.airFilter || 'değişmedi'}\nPolen Filtresi: ${s.pollenFilter || 'değişmedi'}\nFren Balatası: ${s.brakePad || 'değişmedi'}\nAkü: ${s.battery || 'değişmedi'}\nLastik: ${s.tire || 'değişmedi'}\n\nAçıklama: ${s.note || '-'}\nİşçilik: ${money(s.laborCost)}\nParça: ${money(s.partsCost)}\nToplam: ${money(serviceTotal(s))}\n\nİyi günlerde kullanmanız dileğiyle.`;
+
+function handleServicePlateSearch(){
+  const q = plateClean($('servicePlateSearch').value);
+  if(!q){ renderSelectedVehicleInfo(); return; }
+  const exact = vehicles.find(v=>plateClean(v.plate)===q);
+  const matches = vehicles.filter(v=>plateClean(v.plate).includes(q));
+  const found = exact || (matches.length===1 ? matches[0] : null);
+  if(found){
+    $('serviceVehicle').value = found.id;
+  }
+  renderSelectedVehicleInfo(matches);
+}
+
+function renderSelectedVehicleInfo(matches=null){
+  const box = $('selectedVehicleInfo');
+  if(!box) return;
+  const v = vehicles.find(x=>x.id===$('serviceVehicle').value);
+  if(!v){ box.className='row-span empty'; box.innerHTML='Servis kaydı için plaka yaz veya araç kartından Servis Aç butonuna bas.'; return; }
+  const total = services.filter(s=>s.vehicleId===v.id).reduce((a,s)=>a+serviceTotal(s),0);
+  box.className='row-span item';
+  box.innerHTML = `<b>${esc(v.plate)}</b> seçildi<br><span class="meta">${esc(v.model||'-')} • ${esc(v.owner||'-')} • ${esc(v.phone||'')}<br>Mevcut KM: ${v.currentKm||0} • Gelecek servis KM: ${v.nextServiceKm||0}<br>Son servis: ${v.lastServiceDate||'-'} • Toplam maliyet: ${money(total)}</span>`;
+}
+
+function openService(id){
+  const v = vehicles.find(x=>x.id===id);
+  if(!v) return;
+  clearServiceForm();
+  $('serviceVehicle').value = v.id;
+  $('servicePlateSearch').value = v.plate;
+  renderSelectedVehicleInfo();
+  switchTab('service');
+  setTimeout(()=>{ $('serviceKm').focus(); }, 100);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function serviceMessage(s){
+  const v = vehicles.find(x=>x.id===s.vehicleId) || {};
+  return `Araç Servis Bilgilendirmesi\n\nPlaka: ${s.plate}\nMüşteri: ${v.owner||'-'}\nTelefon: ${v.phone||'-'}\nTarih: ${s.date||'-'}\nKM: ${s.km||0}\n\nYağ: ${s.oil||'değişmedi'}\nYağ Filtresi: ${s.oilFilter||'değişmedi'}\nHava Filtresi: ${s.airFilter||'değişmedi'}\nPolen Filtresi: ${s.pollenFilter||'değişmedi'}\nFren Balatası: ${s.brakePad||'değişmedi'}\nAkü: ${s.battery||'değişmedi'}\nLastik: ${s.tire||'değişmedi'}\n\nAçıklama: ${s.note||'-'}\nİşçilik: ${money(s.laborCost)}\nParça: ${money(s.partsCost)}\nToplam: ${money(serviceTotal(s))}`;
 }
 
 function sendWhatsApp(id){
   const s = services.find(x=>x.id===id);
-  if(!s) return alert('Servis kaydı bulunamadı.');
-  const vehicle = vehicles.find(v => v.id === s.vehicleId) || {};
-  const phone = String(vehicle.phone || '').replace(/\D/g, '');
-  const msg = buildServiceText(s);
-  const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
+  if(!s) return;
+  window.open(`https://wa.me/?text=${encodeURIComponent(serviceMessage(s))}`, '_blank');
 }
 
 function generatePDF(id){
   const s = services.find(x=>x.id===id);
-  if(!s) return alert('Servis kaydı bulunamadı.');
-  const vehicle = vehicles.find(v => v.id === s.vehicleId) || {};
+  if(!s) return;
+  const v = vehicles.find(x=>x.id===s.vehicleId) || {};
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Servis Fişi ${esc(s.plate)}</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#111}h1{font-size:22px}table{width:100%;border-collapse:collapse;margin-top:14px}td,th{border:1px solid #ddd;padding:8px;text-align:left}.total{font-size:18px;font-weight:bold}.muted{color:#555}</style></head><body><h1>Araç Servis Fişi</h1><p class="muted">Tarih: ${esc(s.date||'-')}</p><table><tr><th>Plaka</th><td>${esc(s.plate)}</td></tr><tr><th>Marka / Model</th><td>${esc(v.model||'-')}</td></tr><tr><th>Ruhsat Sahibi</th><td>${esc(v.owner||'-')}</td></tr><tr><th>Telefon</th><td>${esc(v.phone||'-')}</td></tr><tr><th>Servis KM</th><td>${s.km||0}</td></tr><tr><th>Gelecek Servis KM</th><td>${v.nextServiceKm||0}</td></tr></table><table><tr><th>İşlem</th><th>Durum</th></tr><tr><td>Yağ</td><td>${esc(s.oil||'değişmedi')}</td></tr><tr><td>Yağ Filtresi</td><td>${esc(s.oilFilter||'değişmedi')}</td></tr><tr><td>Hava Filtresi</td><td>${esc(s.airFilter||'değişmedi')}</td></tr><tr><td>Polen Filtresi</td><td>${esc(s.pollenFilter||'değişmedi')}</td></tr><tr><td>Fren Balatası</td><td>${esc(s.brakePad||'değişmedi')}</td></tr><tr><td>Akü</td><td>${esc(s.battery||'değişmedi')}</td></tr><tr><td>Lastik</td><td>${esc(s.tire||'değişmedi')}</td></tr></table><p><b>Açıklama:</b> ${esc(s.note||'-')}</p><table><tr><th>İşçilik</th><td>${money(s.laborCost)}</td></tr><tr><th>Parça</th><td>${money(s.partsCost)}</td></tr><tr class="total"><th>Toplam</th><td>${money(serviceTotal(s))}</td></tr></table><script>window.print()<\/script></body></html>`;
   const w = window.open('', '_blank');
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Servis Fişi - ${esc(s.plate)}</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111}.box{border:1px solid #ddd;border-radius:12px;padding:18px;margin-bottom:16px}h1{margin:0 0 6px}table{width:100%;border-collapse:collapse;margin-top:10px}td,th{border:1px solid #ddd;padding:9px;text-align:left}.total{font-size:20px;font-weight:bold;text-align:right}.muted{color:#666}.print{margin-bottom:16px;padding:10px 14px}@media print{.print{display:none}}</style></head><body><button class="print" onclick="window.print()">PDF / Yazdır</button><h1>Araç Servis Fişi</h1><p class="muted">Tarih: ${esc(s.date||'-')}</p><div class="box"><strong>Plaka:</strong> ${esc(s.plate)}<br><strong>Marka / Model:</strong> ${esc(vehicle.model||'-')}<br><strong>Ruhsat Sahibi:</strong> ${esc(vehicle.owner||'-')}<br><strong>Telefon:</strong> ${esc(vehicle.phone||'-')}<br><strong>Servis KM:</strong> ${s.km||0}</div><table><tr><th>İşlem</th><th>Durum</th></tr><tr><td>Yağ</td><td>${esc(s.oil||'değişmedi')}</td></tr><tr><td>Yağ filtresi</td><td>${esc(s.oilFilter||'değişmedi')}</td></tr><tr><td>Hava filtresi</td><td>${esc(s.airFilter||'değişmedi')}</td></tr><tr><td>Polen filtresi</td><td>${esc(s.pollenFilter||'değişmedi')}</td></tr><tr><td>Fren balatası</td><td>${esc(s.brakePad||'değişmedi')}</td></tr><tr><td>Akü</td><td>${esc(s.battery||'değişmedi')}</td></tr><tr><td>Lastik</td><td>${esc(s.tire||'değişmedi')}</td></tr></table><div class="box"><strong>Açıklama:</strong><br>${esc(s.note||'-')}</div><table><tr><td>İşçilik Ücreti</td><td>${money(s.laborCost)}</td></tr><tr><td>Parça Ücreti</td><td>${money(s.partsCost)}</td></tr><tr><th>Toplam</th><th>${money(serviceTotal(s))}</th></tr></table><p class="total">Toplam: ${money(serviceTotal(s))}</p></body></html>`;
-  w.document.write(html);
-  w.document.close();
+  w.document.write(html); w.document.close();
 }
 
 async function exportData(){ const data={vehicles,services,exportedAt:new Date().toISOString()}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='arac-servis-yedek.json'; a.click(); URL.revokeObjectURL(a.href); }
@@ -170,5 +195,5 @@ async function importData(e){ const f=e.target.files[0]; if(!f)return; const r=n
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 function registerSW(){if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(()=>{});}
 function setupInstall(){let promptEvent; window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();promptEvent=e;$('installBtn').classList.remove('hidden');}); $('installBtn').onclick=async()=>{if(promptEvent){promptEvent.prompt();promptEvent=null;$('installBtn').classList.add('hidden');}};}
-window.editVehicle=editVehicle; window.deleteVehicle=deleteVehicle; window.showVehicleHistory=showVehicleHistory; window.editService=editService; window.deleteService=deleteService; window.sendWhatsApp=sendWhatsApp; window.generatePDF=generatePDF;
+window.editVehicle=editVehicle; window.deleteVehicle=deleteVehicle; window.showVehicleHistory=showVehicleHistory; window.editService=editService; window.deleteService=deleteService; window.openService=openService; window.sendWhatsApp=sendWhatsApp; window.generatePDF=generatePDF;
 init();

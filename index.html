@@ -43,10 +43,10 @@
           <article><b id="totalVehicles">0</b><span>Araç</span></article>
           <article><b id="totalServices">0</b><span>Servis</span></article>
           <article><b id="totalCost">₺0,00</b><span>Toplam Maliyet</span></article>
-          <article class="danger"><b id="dueCount">0</b><span>Bakım Yakın</span></article>
+          <article><b id="dueCount">0</b><span>Gelecek Servis KM Girilen</span></article>
         </div>
         <div class="card">
-          <h2>Bakımı Yaklaşan Araçlar</h2>
+          <h2>Gelecek Servis KM Kayıtları</h2>
           <div id="dueList" class="list"></div>
         </div>
       </section>
@@ -78,7 +78,10 @@
           <h2>Servis Kaydı</h2>
           <form id="serviceForm" class="grid two">
             <input id="serviceId" type="hidden" />
+            <label>Plaka Ara<input id="servicePlateSearch" list="plateOptions" placeholder="Plaka yaz: MC 166" autocomplete="off" /></label>
+            <datalist id="plateOptions"></datalist>
             <label>Araç Seç<select id="serviceVehicle" required></select></label>
+            <div id="selectedVehicleInfo" class="row-span empty">Servis kaydı için plaka yaz veya araç kartından Servis Aç butonuna bas.</div>
             <label>Servise Geldiği KM<input id="serviceKm" type="number" min="0" required /></label>
             <label>İşlem Tarihi<input id="serviceDate" type="date" required /></label>
             <label>Açıklama<textarea id="serviceNote" rows="2" placeholder="Ek işlem / müşteri notu"></textarea></label>
