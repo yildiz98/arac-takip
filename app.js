@@ -37,6 +37,7 @@ function init(){
   $('vehicleSearch').oninput = renderVehicles;
   $('historySearch').oninput = renderHistory;
   if($('accountSearch')) $('accountSearch').oninput = renderAccounts;
+  if($('plateAccountSearch')) $('plateAccountSearch').oninput = renderPlateAccountHistory;
   if($('paymentForm')) {
     $('paymentForm').addEventListener('submit', savePayment);
   }
@@ -124,7 +125,7 @@ function clearServiceForm(){['serviceId','serviceKm','serviceNote','laborCost','
 function editService(id){const s=services.find(x=>x.id===id); if(!s)return; $('serviceId').value=s.id;$('serviceVehicle').value=s.vehicleId;$('serviceKm').value=s.km||'';$('serviceDate').value=s.date||today();$('oil').value=s.oil||'değişmedi';$('oilFilter').value=s.oilFilter||'değişmedi';$('airFilter').value=s.airFilter||'değişmedi';$('pollenFilter').value=s.pollenFilter||'değişmedi';$('brakePad').value=s.brakePad||'değişmedi';$('battery').value=s.battery||'değişmedi';$('tire').value=s.tire||'değişmedi';$('serviceNote').value=s.note||'';$('laborCost').value=s.laborCost||'';$('partsCost').value=s.partsCost||''; const v=vehicles.find(x=>x.id===s.vehicleId); if(v){$('servicePlateSearch').value=v.plate;} renderSelectedVehicleInfo(); switchTab('service'); window.scrollTo({top:0,behavior:'smooth'});}
 async function deleteService(id){ if(!canDelete()) return alert('Silme yetkisi sadece adminde.'); if(confirm('Servis kaydı silinsin mi?')) await deleteDoc(doc(fs,'services',id)); }
 
-function render(){renderSelect(); renderDashboard(); renderVehicles(); renderHistory(); renderAccounts(); renderPaymentHistory();}
+function render(){renderSelect(); renderDashboard(); renderVehicles(); renderHistory(); renderAccounts(); renderPaymentHistory(); renderPlateAccountHistory();}
 function renderDashboard(){
   const nowMonth = today().slice(0,7);
   const monthItems = services.filter(s => String(s.date || '').slice(0,7) === nowMonth);
@@ -137,6 +138,7 @@ function renderDashboard(){
   $('totalVehicles').textContent=vehicles.length;
   $('totalServices').textContent=services.length;
   $('totalCost').textContent=money(totalRevenue);
+  if($('totalReceivable')) $('totalReceivable').textContent = money(customers().filter(c=>c.balance>0).reduce((a,c)=>a+c.balance,0));
   $('monthServices').textContent=monthItems.length;
   $('monthLabor').textContent=money(monthLabor);
   $('monthParts').textContent=money(monthParts);
@@ -157,7 +159,7 @@ function vehicleCard(v, compact=false){
   const ss=services.filter(s=>s.vehicleId===v.id);
   const total=ss.reduce((a,s)=>a+serviceTotal(s),0);
   const balance = customerBalance(customerKey(v));
-  return `<article class="item"><div class="item-top"><div><h3>${esc(v.plate)}</h3><div class="meta">${esc(v.model||'-')} • ${esc(v.owner||'-')}<br>Mevcut KM: ${v.currentKm||0} • Gelecek servis KM: ${v.nextServiceKm||0}<br>Son servis: ${v.lastServiceDate||'-'} • Toplam: ${money(total)}<br>Cari bakiye: ${money(balance)}</div></div><span class="badge ok">${ss.length} servis</span></div>${compact?'':`<div class="actions"><button onclick="openService('${v.id}')">Servis Aç</button><button onclick="openPayment('${v.id}')">Ödeme</button><button onclick="showVehicleDetail('${v.id}')">Detay</button><button onclick="showVehicleHistory('${v.id}')">Geçmiş</button><button onclick="editVehicle('${v.id}')">Düzenle</button>${canDelete()?`<button class="dangerBtn" onclick="deleteVehicle('${v.id}')">Sil</button>`:''}</div>`}</article>`;
+  return `<article class="item"><div class="item-top"><div><h3>${esc(v.plate)}</h3><div class="meta">${esc(v.model||'-')} • ${esc(v.owner||'-')}<br>Mevcut KM: ${v.currentKm||0} • Gelecek servis KM: ${v.nextServiceKm||0}<br>Son servis: ${v.lastServiceDate||'-'} • Toplam: ${money(total)}<br>Cari bakiye: ${money(balance)}</div></div><span class="badge ok">${ss.length} servis</span></div>${compact?'':`<div class="actions"><button onclick="openService('${v.id}')">Servis Aç</button><button onclick="openPayment('${v.id}')">Ödeme</button><button onclick="showPlateAccountByVehicle('${v.id}')">Cari Geçmiş</button><button onclick="showVehicleDetail('${v.id}')">Detay</button><button onclick="showVehicleHistory('${v.id}')">Geçmiş</button><button onclick="editVehicle('${v.id}')">Düzenle</button>${canDelete()?`<button class="dangerBtn" onclick="deleteVehicle('${v.id}')">Sil</button>`:''}</div>`}</article>`;
 }
 function showVehicleHistory(id){const v=vehicles.find(x=>x.id===id); if(!v)return; switchTab('history'); $('historySearch').value=v.plate; renderVehicleDetail(v.id); renderHistory();}
 function showVehicleDetail(id){
@@ -382,10 +384,88 @@ function clearPaymentForm(){ ['paymentCustomerKey','paymentOwner','paymentPhone'
 async function deletePayment(id){ if(!canDelete()) return alert('Silme yetkisi sadece adminde.'); if(confirm('Cari hareket silinsin mi?')) await deleteDoc(doc(fs,'payments',id)); }
 function escAttr(v){ return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 
+
+function monthName(ym){
+  if(!ym || !ym.includes('-')) return 'Tarihsiz';
+  const [y,m] = ym.split('-').map(Number);
+  return new Date(y, (m||1)-1, 1).toLocaleDateString('tr-TR',{year:'numeric',month:'long'});
+}
+function movementAmount(m){
+  if(m.kind === 'service') return +m.amount || 0;
+  return paymentSign(m.type) * (+m.amount || 0);
+}
+function movementBadge(m){
+  const amount = movementAmount(m);
+  if(m.kind === 'service') return `+ ${money(amount)}`;
+  return `${amount >= 0 ? '+ ' : '- '}${money(Math.abs(amount))}`;
+}
+function movementLabel(m){
+  if(m.kind === 'service') return 'Servis Ücreti';
+  return paymentLabel(m.type);
+}
+function renderPlateAccountHistory(){
+  const el = $('plateAccountDetail');
+  if(!el) return;
+  const q = plateClean($('plateAccountSearch')?.value || '');
+  if(!q){
+    el.innerHTML = '<div class="empty">Plaka yazınca o araca ait servis ücretleri, ödemeler ve kalan bakiye burada görünür.</div>';
+    return;
+  }
+  const matches = vehicles.filter(v => plateClean(v.plate).includes(q));
+  if(!matches.length){
+    el.innerHTML = '<div class="empty">Bu plakaya ait araç bulunamadı.</div>';
+    return;
+  }
+  const v = matches[0];
+  const key = customerKey(v);
+  const c = customers().find(x=>x.key===key) || {balance:0, serviceTotal:0, paymentNet:0};
+  const vehicleServices = services.filter(s => s.vehicleId === v.id || plateClean(s.plate) === plateClean(v.plate));
+  const customerPayments = payments.filter(p => (p.customerKey || (String(p.owner||'') + '|' + String(p.phone||'').replace(/\D/g,'')).toLocaleLowerCase('tr-TR')) === key);
+  const movements = [
+    ...vehicleServices.map(s => ({kind:'service', id:s.id, date:s.date || '', amount:serviceTotal(s), title:`${s.plate} servis`, note: servicePartsSummary(s), detail:`İşçilik: ${money(s.laborCost)} • Parça: ${money(s.partsCost)} • KM: ${s.km||0}`})),
+    ...customerPayments.map(p => ({kind:'payment', id:p.id, date:p.date || '', amount:+p.amount||0, type:p.type, title:paymentLabel(p.type), note:p.note||'', detail:`${p.owner||baseCustomerName(v)} • ${p.phone||v.phone||'-'}`}))
+  ].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+
+  const monthMap = new Map();
+  for(const m of movements){
+    const ym = (m.date || '').slice(0,7) || 'Tarihsiz';
+    if(!monthMap.has(ym)) monthMap.set(ym, {charge:0, pay:0, rows:[]});
+    const g = monthMap.get(ym);
+    const amt = movementAmount(m);
+    if(m.kind === 'service' || amt > 0) g.charge += amt;
+    else g.pay += Math.abs(amt);
+    g.rows.push(m);
+  }
+
+  const monthsHtml = [...monthMap.entries()].map(([ym,g]) => `
+    <article class="item">
+      <div class="item-top"><div><h3>${esc(monthName(ym))}</h3><div class="meta">Verilen iş / borç: ${money(g.charge)} • Ödeme / düşüm: ${money(g.pay)} • Ay farkı: ${money(g.charge-g.pay)}</div></div><span class="badge ${g.charge-g.pay>0?'warn':'ok'}">${money(g.charge-g.pay)}</span></div>
+      <div class="mini-list">${g.rows.map(m=>`<div class="mini-row"><b>${esc(m.date||'-')} • ${esc(movementLabel(m))}</b><span>${esc(m.detail||'')}</span><span>${esc(m.note||'')}</span><strong>${movementBadge(m)}</strong></div>`).join('')}</div>
+    </article>`).join('');
+
+  el.innerHTML = `
+    <article class="item">
+      <div class="item-top"><div><h3>${esc(v.plate)} - ${esc(baseCustomerName(v))}</h3><div class="meta">${esc(v.model||'-')} • ${esc(v.phone||'-')}<br>Bu plaka servis toplamı: ${money(vehicleServices.reduce((a,s)=>a+serviceTotal(s),0))} • Müşteri ödemeleri/düşümleri: ${money(-c.paymentNet)}<br><b>Güncel cari bakiye: ${money(c.balance)}</b></div></div><span class="badge ${c.balance>0?'warn':'ok'}">${c.balance>0?'Alacak':'Kapalı'}</span></div>
+      <div class="actions"><button onclick="openPayment('${v.id}')">Ödeme Al</button><button onclick="openDebtByKey('${escAttr(key)}')">Borç Ekle</button><button onclick="showVehicleHistory('${v.id}')">Servis Geçmişi</button></div>
+    </article>
+    ${monthsHtml || '<div class="empty">Bu plaka için cari hareket yok.</div>'}`;
+}
+function servicePartsSummary(s){
+  const changed = [['Yağ',s.oil],['Yağ filtresi',s.oilFilter],['Hava filtresi',s.airFilter],['Polen filtresi',s.pollenFilter],['Fren balatası',s.brakePad],['Akü',s.battery],['Lastik',s.tire]].filter(([,v])=>v==='değişti').map(([k])=>k);
+  return changed.length ? `Değişenler: ${changed.join(', ')}` : (s.note || 'Servis kaydı');
+}
+function showPlateAccountByVehicle(id){
+  const v = vehicles.find(x=>x.id===id); if(!v) return;
+  switchTab('accounts');
+  if($('plateAccountSearch')) $('plateAccountSearch').value = v.plate;
+  renderPlateAccountHistory();
+  setTimeout(()=>$('plateAccountSearch')?.scrollIntoView({behavior:'smooth',block:'center'}),50);
+}
+
 async function exportData(){ const data={vehicles,services,payments,exportedAt:new Date().toISOString()}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='arac-servis-yedek.json'; a.click(); URL.revokeObjectURL(a.href); }
 async function importData(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async()=>{try{const imported=JSON.parse(r.result); if(!Array.isArray(imported.vehicles)||!Array.isArray(imported.services)) throw Error(); const batch=writeBatch(fs); imported.vehicles.forEach(v=>{const id=v.id||doc(collection(fs,'vehicles')).id; delete v.id; batch.set(doc(fs,'vehicles',id), {...v, updatedAt:serverTimestamp(), updatedBy:currentUser.email});}); imported.services.forEach(s=>{const id=s.id||doc(collection(fs,'services')).id; delete s.id; batch.set(doc(fs,'services',id), {...s, updatedAt:serverTimestamp(), updatedBy:currentUser.email});}); (imported.payments||[]).forEach(p=>{const id=p.id||doc(collection(fs,'payments')).id; delete p.id; batch.set(doc(fs,'payments',id), {...p, updatedAt:serverTimestamp(), updatedBy:currentUser.email});}); await batch.commit(); alert('Yedek Firebase içine yüklendi.');}catch{alert('Yedek dosyası okunamadı.');}}; r.readAsText(f); }
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 function registerSW(){if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(()=>{});}
 function setupInstall(){let promptEvent; window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();promptEvent=e;$('installBtn').classList.remove('hidden');}); $('installBtn').onclick=async()=>{if(promptEvent){promptEvent.prompt();promptEvent=null;$('installBtn').classList.add('hidden');}};}
-window.openPayment=openPayment; window.openPaymentByKey=openPaymentByKey; window.openDebtByKey=openDebtByKey; window.filterCustomerHistory=filterCustomerHistory; window.deletePayment=deletePayment; window.showVehicleDetail=showVehicleDetail; window.editVehicle=editVehicle; window.deleteVehicle=deleteVehicle; window.showVehicleHistory=showVehicleHistory; window.editService=editService; window.deleteService=deleteService; window.openService=openService; window.sendWhatsApp=sendWhatsApp; window.generatePDF=generatePDF;
+window.showPlateAccountByVehicle=showPlateAccountByVehicle; window.openPayment=openPayment; window.openPaymentByKey=openPaymentByKey; window.openDebtByKey=openDebtByKey; window.filterCustomerHistory=filterCustomerHistory; window.deletePayment=deletePayment; window.showVehicleDetail=showVehicleDetail; window.editVehicle=editVehicle; window.deleteVehicle=deleteVehicle; window.showVehicleHistory=showVehicleHistory; window.editService=editService; window.deleteService=deleteService; window.openService=openService; window.sendWhatsApp=sendWhatsApp; window.generatePDF=generatePDF;
 init();

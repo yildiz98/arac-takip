@@ -44,6 +44,7 @@
           <article><b id="totalVehicles">0</b><span>Araç</span></article>
           <article><b id="totalServices">0</b><span>Servis</span></article>
           <article><b id="totalCost">₺0,00</b><span>Genel Ciro</span></article>
+          <article><b id="totalReceivable">₺0,00</b><span>Toplam Alacak</span></article>
           <article><b id="monthServices">0</b><span>Bu Ay Servis</span></article>
           <article><b id="monthLabor">₺0,00</b><span>Bu Ay İşçilik</span></article>
           <article><b id="monthParts">₺0,00</b><span>Bu Ay Parça</span></article>
@@ -125,6 +126,10 @@
           <div id="accountList" class="list"></div>
         </div>
         <div class="card">
+          <div class="section-title"><h2>Plakaya Özel Cari Geçmiş</h2><input id="plateAccountSearch" list="plateOptions" placeholder="Plaka yaz: MC 166" autocomplete="off" /></div>
+          <div id="plateAccountDetail" class="list"><div class="empty">Plaka yazınca o araca ait servis ücretleri, ödemeler ve kalan bakiye burada görünür.</div></div>
+        </div>
+        <div class="card">
           <h2>Ödeme / Cari İşlem</h2>
           <form id="paymentForm" class="grid two">
             <input id="paymentCustomerKey" type="hidden" />
@@ -153,6 +158,6 @@
     </section>
   </main>
 
-  <script type="module" src="app.js?v=4.1"></script>
+  <script type="module" src="app.js?v=5"></script>
 </body>
 </html>
