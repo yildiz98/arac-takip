@@ -1,0 +1,21 @@
+HİÇKORKMAZ GARAJ - V6 Marka/Tasarım Paketi
+
+Bu paket mevcut çalışan sistemi bozmadan marka görünümünü günceller.
+
+İçindekiler:
+- logo.png
+- icon-192.png
+- icon-512.png
+- manifest.json
+- style.css
+
+Kurulum:
+1) GitHub'da v6-tasarim branch seçili olsun.
+2) Add file > Upload files seç.
+3) Bu paketin içindeki dosyaları yükle.
+4) Replace existing files derse onayla.
+5) Commit changes yap.
+6) Siteyi test ederken ?v=6 ile aç ve Ctrl+F5 yap.
+
+Not:
+Bu paket app.js dosyasına dokunmaz. Firebase, cari hesap, PDF, WhatsApp, servis kayıtları bozulmaz.
