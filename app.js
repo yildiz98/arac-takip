@@ -176,45 +176,9 @@ function serviceMessage(s){
 }
 
 function sendWhatsApp(id){
-  const s = services.find(x => x.id === id);
+  const s = services.find(x=>x.id===id);
   if(!s) return;
-
-  const vehicle = vehicles.find(v => v.plate === s.plate);
-
-  let phone = vehicle?.phone || "";
-
-  phone = phone.replace(/\D/g,'');
-
-  if(phone.startsWith("0")){
-    phone = "90" + phone.substring(1);
-  }
-
-  const msg =
-`Araç Servis Bilgilendirmesi
-
-Plaka: ${s.plate}
-Tarih: ${s.date}
-KM: ${s.km}
-
-Yağ: ${s.oil}
-Yağ Filtresi: ${s.oilFilter}
-Hava Filtresi: ${s.airFilter}
-Polen Filtresi: ${s.pollenFilter}
-Fren Balatası: ${s.brakePad}
-Akü: ${s.battery}
-Lastik: ${s.tire}
-
-İşçilik: ${money(s.laborCost)}
-Parça: ${money(s.partsCost)}
-Toplam: ${money(serviceTotal(s))}
-
-İyi günlerde kullanmanız dileğiyle.`;
-
-  window.open(
-    `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,
-    "_blank"
-  );
-}
+  window.open(`https://wa.me/?text=${encodeURIComponent(serviceMessage(s))}`, '_blank');
 }
 
 function generatePDF(id){
