@@ -173,24 +173,42 @@ function getPaymentsByVehicle(vehicleId){
   return db.payments.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date)));
 }
 
-function customerTotal(customerId){ return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehicleTotal(v.id),0); }
+function vehicleTotal(vehicleId){
+  return getServicesByVehicle(vehicleId).reduce((t,s)=>t+Number(s.amount||0),0);
+}
+
+function vehiclePaid(vehicleId){
+  return getPaymentsByVehicle(vehicleId).reduce((t,p)=>t+Number(p.amount||0),0);
+}
+
+function vehicleDebt(vehicleId){
+  return vehicleTotal(vehicleId)-vehiclePaid(vehicleId);
+}
+
+function customerTotal(customerId){
+  return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehicleTotal(v.id),0);
+}
+
 function customerPaid(customerId){
   return db.payments
     .filter(p => p.customerId === customerId)
     .reduce((t,p)=>t+Number(p.amount||0),0);
 }
-function customerDebt(customerId){ return customerTotal(customerId)-customerPaid(customerId); }
-function lastServiceDate(vehicleId){ return getServicesByVehicle(vehicleId)[0]?.date || "-"; }
-function lastServiceRecord(vehicleId){ return getServicesByVehicle(vehicleId)[0] || null; }
-function vehicleLastKm(vehicleId){ return Number(lastServiceRecord(vehicleId)?.currentKm || 0); }
-function vehicleNextKm(vehicleId){ return Number(lastServiceRecord(vehicleId)?.nextKm || 0); }
-function kmFormat(n){ return Number(n||0) ? Number(n).toLocaleString("tr-TR") + " km" : "-"; }
-function remainingKm(vehicleId){
-  const next = vehicleNextKm(vehicleId);
-  const current = vehicleLastKm(vehicleId);
-  if(!next || !current) return null;
-  return next - current;
+
+function customerDebt(customerId){
+  return customerTotal(customerId)-customerPaid(customerId);
 }
+
+function paymentTypeText(p){
+  if(p.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
+  if(p.paymentType === "customer_only") return "Sadece Cari Hesap";
+  return p.vehicleId ? "Araç + Cari Hesap" : "Sadece Cari Hesap";
+}
+
+
+
+
+
 
 const pages = {
   dashboard:"Dashboard",

@@ -117,3 +117,9 @@ Bu sürümde tahsilat mantığı şu şekilde güncellendi:
 3. Plaka yazılır ama sistemde kayıtlı değilse:
    - Şahıs/Firma adı zorunludur.
    - Ödeme sadece cari hesap tahsilatı olarak kaydedilir.
+
+
+## Dashboard Boş Görünme Hatası Düzeltmesi
+
+Bu sürümde `vehicleTotal is not defined` hatası düzeltildi.
+Dashboard, borç takibi, müşteri toplam borcu ve araç borcu hesaplamaları yeniden sağlam şekilde tanımlandı.
