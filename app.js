@@ -10,6 +10,8 @@ import { firebaseConfig, ADMIN_EMAILS, PERSONEL_EMAILS } from "./firebase-config
 const STORE_KEY = "hickorkmaz_garaj_v7_data";
 const AUTH_KEY = "hickorkmaz_garaj_v7_google_auth";
 
+const DELETE_PASSWORD = "212198";
+
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 let activeUser = null;
@@ -134,13 +136,22 @@ function findCustomerByName(name){
     const cn = norm(c.name);
     return cn.includes(target) || target.includes(cn);
   });
+  if(found) return found;
 
-  return found || null;
+  return null;
 }
 function findOrCreateCustomerByName(name, phone=""){
-  let found = findCustomerByName(name);
+  const cleanName = safe(name).trim();
+  let found = findCustomerByName(cleanName);
   if(found) return found;
-  const created = { id:newId("c"), name:safe(name).trim(), phone:phone || "", type:"Müşteri/Firma", note:"Araç ekleme sırasında otomatik oluşturuldu" };
+
+  const created = {
+    id:newId("c"),
+    name:cleanName,
+    phone:phone || "",
+    type:"Şahıs/Firma",
+    note:"Kayıt sırasında otomatik oluşturuldu"
+  };
   db.customers.push(created);
   return created;
 }
@@ -185,43 +196,9 @@ function getVehiclesByCustomer(customerId){ return db.vehicles.filter(x=>x.custo
 function getServicesByVehicle(vehicleId){ return db.services.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
 function getPaymentsByVehicle(vehicleId){ return db.payments.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
 function vehicleTotal(vehicleId){ return getServicesByVehicle(vehicleId).reduce((t,x)=>t+Number(x.amount||0),0); }
-function vehiclePaid(vehicleId){ return getPaymentsByVehicle(vehicleId).reduce((t,x)=>t+Number(x.amount||0),0); }
-function vehicleDebt(vehicleId){ return vehicleTotal(vehicleId)-vehiclePaid(vehicleId); }
-function customerTotal(customerId){ return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehicleTotal(v.id),0); }
-function customerPaid(customerId){
-  const vehiclePayments =
-    getVehiclesByCustomer(customerId)
-      .reduce((t,v)=>t+vehiclePaid(v.id),0);
 
-  const directPayments =
-    db.payments
-      .filter(p =>
-        p.customerId === customerId &&
-        (!p.vehicleId || p.paymentType === "customer_only")
-      )
-      .reduce((t,p)=>t+Number(p.amount||0),0);
 
-  return vehiclePayments + directPayments;
-}
-function customerDebt(customerId){ return customerTotal(customerId)-customerPaid(customerId); }
-function lastServiceDate(vehicleId){ return getServicesByVehicle(vehicleId)[0]?.date || "-"; }
-function lastServiceRecord(vehicleId){ return getServicesByVehicle(vehicleId)[0] || null; }
-function vehicleLastKm(vehicleId){ return Number(lastServiceRecord(vehicleId)?.currentKm || 0); }
-function vehicleNextKm(vehicleId){ return Number(lastServiceRecord(vehicleId)?.nextKm || 0); }
-function kmFormat(n){ return Number(n||0) ? Number(n).toLocaleString("tr-TR") + " km" : "-"; }
-function remainingKm(vehicleId){
-  const next = vehicleNextKm(vehicleId);
-  const current = vehicleLastKm(vehicleId);
-  if(!next || !current) return null;
-  return next - current;
-}
 
-function paymentTypeText(p){
-  if(p.paymentType === "vehicle_only") return "Sadece Araç";
-  if(p.paymentType === "customer_only") return "Sadece Cari Hesap";
-  if(p.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
-  return p.vehicleId ? "Sadece Araç" : "Sadece Cari Hesap";
-}
 
 
 const pages = {
@@ -234,7 +211,41 @@ const pages = {
   reports:"Raporlar",
   settings:"Ayarlar",
   detail:"Detay"
-};
+}
+
+function vehiclePaid(vehicleId){
+  // Sadece araç plakasına işlenen tahsilatlar araç borcundan düşer.
+  return db.payments
+    .filter(p => p.vehicleId === vehicleId)
+    .reduce((t,p)=>t+Number(p.amount||0),0);
+}
+
+function vehicleDebt(vehicleId){
+  return vehicleTotal(vehicleId)-vehiclePaid(vehicleId);
+}
+
+function customerPaid(customerId){
+  return db.payments
+    .filter(p => p.customerId === customerId)
+    .reduce((t,p)=>t+Number(p.amount||0),0);
+}
+
+function customerDebt(customerId){
+  return customerTotal(customerId)-customerPaid(customerId);
+}
+
+
+
+
+
+
+function paymentTypeText(p){
+  if(p.paymentType === "vehicle_only") return "Sadece Araç";
+  if(p.paymentType === "customer_only") return "Sadece Cari Hesap";
+  if(p.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
+  return p.vehicleId ? "Sadece Araç" : "Sadece Cari Hesap";
+}
+;
 
 
 
@@ -430,13 +441,13 @@ function renderDashboard(){
     .sort((a,b)=>(a.remaining ?? 999999999)-(b.remaining ?? 999999999))
     .slice(0,8);
 
- document.getElementById("dashboard").innerHTML = `
+  document.getElementById("dashboard").innerHTML = `
     <div class="grid stats">
-      ${stat('<i class="fa-solid fa-car"></i> Toplam Araç', db.vehicles.length)}
-      ${stat('<i class="fa-solid fa-user-group"></i> Toplam Müşteri/Firma', db.customers.length)}
-      ${stat('<i class="fa-solid fa-wallet"></i> Toplam Alacak', money(totalDebt), totalDebt>0?"bad":"good")}
-      ${stat('<i class="fa-solid fa-chart-line"></i> Toplam Ciro', money(totalRevenue), "good")}
-      ${stat('<i class="fa-solid fa-money-bill-wave"></i> Bugünkü Tahsilat', money(todayPaid), "good")}
+      ${stat("Toplam Araç", db.vehicles.length)}
+      ${stat("Toplam Müşteri/Firma", db.customers.length)}
+      ${stat("Toplam Alacak", money(totalDebt), totalDebt>0?"bad":"good")}
+      ${stat("Toplam Ciro", money(totalRevenue))}
+      ${stat("Bugünkü Tahsilat", money(todayPaid), "good")}
     </div>
     <div class="grid two">
       <div class="panel"><div class="panel-head"><h3>Son Servis Kayıtları</h3><button class="small-btn" onclick="openPage('services')">Tümü</button></div>${servicesTable(recentServices)}</div>
@@ -529,6 +540,7 @@ function vehiclesTable(list){
   ${list.map(v=>`<tr><td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td><td>${getCustomer(v.customerId)?.name || "-"}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td><td>${lastServiceDate(v.id)}</td><td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td><td>${v.note || "-"}</td><td>
       <button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button>
       ${isAdmin() ? `<button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
+      ${isAdmin() ? `<button class="small-btn danger-btn" onclick="deleteVehicle('${v.id}')">Sil</button>` : ``}
       <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>` : ``}
     </td></tr>`).join("") || emptyRow(7)}
   </tbody></table></div>`;
@@ -615,52 +627,22 @@ function canOutput(){
 function serviceSinglePlainText(serviceId){
   const s = db.services.find(x => x.id === serviceId);
   if(!s) return "Servis kaydı bulunamadı.";
-
   const v = getVehicle(s.vehicleId);
   const c = getCustomer(v?.customerId);
-
-  const vehicleName =
-    `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
-
-  const vehicleModel =
-    [v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-";
-
-  let text = `HİÇKORKMAZ GARAJ\n`;
-  text += `------------------------------\n\n`;
-
-  text += `[Müşteri/Firma]\n`;
-  text += `${c?.name || "-"}\n\n`;
-
-  text += `[Araç]\n`;
-  text += `${vehicleName}\n`;
-  text += `${vehicleModel}\n\n`;
-
-  text += `[Servis Tarihi]\n`;
-  text += `${s.date || "-"}\n\n`;
-
-  text += `[KM Bilgileri]\n`;
+  const vehicleName = `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
+  let text = `Hiçkorkmaz Garaj - Servis Kaydı\n\n`;
+  text += `Müşteri/Firma: ${c?.name || "-"}\n`;
+  text += `Araç: ${vehicleName}\n`;
+  text += `Marka/Model: ${[v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-"}\n`;
+  text += `Tarih: ${s.date || "-"}\n`;
   text += `Geldiği KM: ${kmFormat(s.currentKm)}\n`;
-  text += `Sonraki Bakım: ${kmFormat(s.nextKm)}\n\n`;
-
-  text += `[Yapılan İşlemler]\n`;
-  text += `${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n\n`;
-
-  text += `[Ücret Bilgileri]\n`;
+  text += `Bir Sonraki Bakım KM: ${kmFormat(s.nextKm)}\n`;
+  text += `Yapılan İşlemler: ${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n`;
   text += `İşçilik: ${money(s.laborAmount || 0)}\n`;
   text += `Parça: ${money(s.partsAmount || 0)}\n`;
-  text += `Toplam: ${money(s.amount)}\n\n`;
-
-  if(s.note){
-    text += `[Not]\n`;
-    text += `${s.note}\n\n`;
-  }
-
-  text += `[İşlemi Yapan]\n`;
-  text += `${s.createdBy || "-"}\n\n`;
-
-  text += `Teşekkür ederiz.\n`;
-  text += `Hiçkorkmaz Garaj`;
-
+  text += `Toplam: ${money(s.amount)}\n`;
+  text += `Not: ${s.note || "-"}\n` +
+    `İşlemi Yapan: ${s.createdBy || "-"}\n`;
   return text;
 }
 
@@ -988,7 +970,7 @@ window.openModal = function(type){
     setTimeout(() => { bindServiceTotalPreview(); bindServiceTargetFinder(); }, 0);
   }
   if(type === "payment"){
-    document.getElementById("modalBody").innerHTML = `${field("Müşteri / Firma Adı","customerName","text","",false)}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka kayıtlıysa ödeme araç borcundan düşer. Plaka boşsa ödeme Müşteri/Firma cari hesabından düşer.</p>`;
+    document.getElementById("modalBody").innerHTML = `${field("Müşteri / Firma Adı","customerName","text","",false)}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka kayıtlıysa ödeme sadece o aracın borcuna işlenir. Plaka boşsa Müşteri/Firma adına cari hesaptan düşer.</p>`;
   }
   modal.showModal();
 };
@@ -1079,16 +1061,22 @@ modalForm.addEventListener("submit", function(e){
     let paymentType = "customer_only";
 
     if(foundVehicle){
-      // Plaka kayıtlıysa: sadece araç tahsilatı
       targetCustomer = getCustomer(foundVehicle.customerId);
       paymentType = "vehicle_only";
     }else{
-      // Plaka yoksa veya plaka kayıtlı değilse: müşteri/firma cari hesabı
       if(!typedCustomerName){
-        alert("Plaka kayıtlı değilse veya plaka boşsa Müşteri/Firma Adı yazman gerekir.");
+        alert("Cari tahsilat için Müşteri / Firma Adı yazman gerekir.");
         return;
       }
-      targetCustomer = findOrCreateCustomerByName(typedCustomerName, "");
+
+      targetCustomer = findCustomerByName(typedCustomerName);
+
+      if(!targetCustomer){
+        const createOk = confirm("Bu Müşteri/Firma mevcut kayıtlarda bulunamadı. Yeni cari kart oluşturulsun mu?");
+        if(!createOk) return;
+        targetCustomer = findOrCreateCustomerByName(typedCustomerName, "");
+      }
+
       paymentType = "customer_only";
     }
 
@@ -1146,67 +1134,14 @@ window.importData = function(event){
   reader.readAsText(file);
 };
 window.resetAllData = function(){
-  alert("Yeni kod çalıştı");
-
   if(!requireAdmin()) return;
-
-  const password = prompt("Silme şifresini giriniz:");
-
-  if(password !== "212198"){
-    alert("Hatalı şifre!");
-    return;
-  }
-
-  const ok = confirm(
-    "DİKKAT!\n\nTüm müşteri, araç, servis ve tahsilat kayıtları silinecek.\n\nDevam etmek istiyor musun?"
-  );
-
+  const ok = confirm("Tüm müşteri, araç, servis ve tahsilat kayıtları silinecek. Emin misin?");
   if(!ok) return;
-
-  db = {
-    customers: [],
-    vehicles: [],
-    services: [],
-    payments: []
-  };
-
+  db = { customers: [], vehicles: [], services: [], payments: [] };
   persist();
-  alert("Tüm veriler silindi.");
+  alert("Sistem temizlendi.");
 };
 
-  const ok = confirm(
-    "DİKKAT!\n\nTüm müşteri, araç, servis ve tahsilat kayıtları silinecek.\n\nDevam etmek istiyor musun?"
-  );
-
-  if(!ok) return;
-
-  db = {
-    customers: [],
-    vehicles: [],
-    services: [],
-    payments: []
-  };
-
-  persist();
-  alert("Tüm veriler silindi.");
-};
-
-  const ok = confirm(
-    "DİKKAT!\n\nTüm müşteri, araç, servis ve tahsilat kayıtları silinecek.\n\nDevam etmek istiyor musun?"
-  );
-
-  if(!ok) return;
-
-  db = {
-    customers: [],
-    vehicles: [],
-    services: [],
-    payments: []
-  };
-
-  persist();
-  alert("Tüm veriler silindi.");
-};
 window.clearDemo = function(){
   if(!requireAdmin()) return;
   db.customers = db.customers.filter(x=>!x.id.includes("_demo_"));
@@ -1220,3 +1155,48 @@ setupAuth();
 setupMobileMenu();
 applyAuthState();
 if(activeUser) render();
+
+
+window.debugCustomerPayments = function(){
+  return db.customers.map(c => ({
+    name:c.name,
+    id:c.id,
+    paid:customerPaid(c.id),
+    debt:customerDebt(c.id),
+    payments:db.payments.filter(p=>p.customerId===c.id)
+  }));
+};
+
+
+window.findCariDebug = function(name){
+  const c = findCustomerByName(name);
+  if(!c) return null;
+  return {
+    customer:c,
+    total:customerTotal(c.id),
+    paid:customerPaid(c.id),
+    debt:customerDebt(c.id),
+    payments:db.payments.filter(p=>p.customerId===c.id)
+  };
+};
+window.clearDemo = function(){
+  window.deleteVehicle = function(vehicleId){
+  if(!requireAdmin()) return;
+
+  const password = prompt("Silme şifresini giriniz:");
+
+  if(password !== DELETE_PASSWORD){
+    alert("Hatalı şifre!");
+    return;
+  }
+
+  const ok = confirm("Araç ve tüm servis geçmişi silinecek. Emin misin?");
+  if(!ok) return;
+
+  db.services = db.services.filter(s => s.vehicleId !== vehicleId);
+  db.payments = db.payments.filter(p => p.vehicleId !== vehicleId);
+  db.vehicles = db.vehicles.filter(v => v.id !== vehicleId);
+
+  persist();
+  alert("Araç silindi.");
+};
