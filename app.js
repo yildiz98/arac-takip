@@ -10,6 +10,8 @@ import { firebaseConfig, ADMIN_EMAILS, PERSONEL_EMAILS } from "./firebase-config
 const STORE_KEY = "hickorkmaz_garaj_v7_data";
 const AUTH_KEY = "hickorkmaz_garaj_v7_google_auth";
 
+const DELETE_PASSWORD = "212198";
+
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
 let activeUser = null;
@@ -1175,4 +1177,25 @@ window.findCariDebug = function(name){
     debt:customerDebt(c.id),
     payments:db.payments.filter(p=>p.customerId===c.id)
   };
+};
+window.clearDemo = function(){
+  window.deleteVehicle = function(vehicleId){
+  if(!requireAdmin()) return;
+
+  const password = prompt("Silme şifresini giriniz:");
+
+  if(password !== DELETE_PASSWORD){
+    alert("Hatalı şifre!");
+    return;
+  }
+
+  const ok = confirm("Araç ve tüm servis geçmişi silinecek. Emin misin?");
+  if(!ok) return;
+
+  db.services = db.services.filter(s => s.vehicleId !== vehicleId);
+  db.payments = db.payments.filter(p => p.vehicleId !== vehicleId);
+  db.vehicles = db.vehicles.filter(v => v.id !== vehicleId);
+
+  persist();
+  alert("Araç silindi.");
 };
