@@ -154,3 +154,111 @@ Bu sürümde servis geçmişi tablosundaki her satır için ayrı butonlar eklen
 - WP: sadece tıklanan servis kaydını WhatsApp mesajı olarak hazırlar.
 
 Araç detayındaki üst butonlar ise özellikle “Tüm Geçmiş” olarak adlandırıldı.
+
+
+## V7 Admin / Personel Girişi Güncellemesi
+
+Eklenen özellikler:
+- Giriş ekranı.
+- Admin girişi.
+- Personel girişi.
+- Çıkış butonu.
+- Aktif kullanıcı bilgisi.
+- Personel için Raporlar ve Ayarlar menüsü gizlenir.
+- Admin Ayarlar bölümünden Admin ve Personel şifrelerini değiştirebilir.
+
+Varsayılan giriş:
+- Admin şifre: 1234
+- Personel şifre: 0000
+
+Not:
+Şifreler tarayıcı localStorage içinde saklanır. Bu yapı temel kullanıcı ayrımı içindir.
+
+
+## V7 Mobil / Telefon Uyum Güncellemesi
+
+Eklenenler:
+- Telefonda açılır/kapanır sol menü.
+- Mobil menü butonu.
+- Dokunmatik kullanıma uygun büyük butonlar.
+- Telefon ekranına göre düzenlenen dashboard kartları.
+- Responsive servis tabloları.
+- Mobil uyumlu giriş ekranı.
+- PWA/ana ekrana ekleme için manifest iyileştirmesi.
+- iPhone için Apple web app meta etiketleri.
+
+Telefonda kullanım:
+- Siteyi telefonda aç.
+- Menü için üstteki “☰ Menü” butonuna bas.
+- iPhone için Safari > Paylaş > Ana Ekrana Ekle.
+- Android için Chrome > Üç nokta > Ana ekrana ekle.
+
+
+## V7 Google Hesabı ile Admin / Personel Girişi
+
+Bu sürümde eski şifreli giriş yerine Google hesabı ile giriş eklendi.
+
+### Yetki Mantığı
+
+Admin:
+- Tüm menülere erişir.
+- WhatsApp / PDF / Yazdır kullanır.
+- Borç, tahsilat, raporlar ve ayarlar erişimi vardır.
+- Yedekleme ve veri işlemleri yapar.
+
+Personel:
+- Müşteri / firma kaydı yapar.
+- Araç kaydı yapar.
+- Servis kaydı yapar.
+- WhatsApp / PDF / Yazdır kullanamaz.
+- Borç / tahsilat / raporlar / ayarlar ekranlarını göremez.
+
+### Firebase Ayarı
+
+`firebase-config.js` dosyasını aç ve Firebase Web App config bilgilerini gir.
+
+Ayrıca yetki e-postalarını düzenle:
+
+```js
+export const ADMIN_EMAILS = [
+  "admin@gmail.com"
+];
+
+export const PERSONEL_EMAILS = [
+  "personel@gmail.com"
+];
+```
+
+### Firebase Console Gerekenler
+
+1. Firebase projesi oluştur.
+2. Authentication > Sign-in method > Google aktif et.
+3. Authentication > Settings > Authorized domains içine GitHub Pages domainini ekle:
+   - yildiz98.github.io
+4. Project settings > General > Web app config bilgilerini firebase-config.js içine yapıştır.
+
+
+## V7 Firebase E-posta/Şifre Admin-Personel Girişi
+
+Bu sürüm Google popup yerine Firebase Authentication > Users kısmında oluşturduğun e-posta/şifre kullanıcıları ile çalışır.
+
+Tanımlı yetkiler:
+- Admin: admin@aractakip.com
+- Personel: personel1@aractakip.com
+
+Admin:
+- Tüm menüler ve tüm işlemler açık.
+- WP/PDF/Yazdır açık.
+- Borç/tahsilat/rapor/ayarlar açık.
+
+Personel:
+- Müşteri/Firma kaydı yapabilir.
+- Araç kaydı yapabilir.
+- Servis kaydı yapabilir.
+- WP/PDF/Yazdır kapalı.
+- Borç, tahsilat, raporlar ve ayarlar kapalı.
+
+Yeni personel eklemek için:
+1. Firebase > Authentication > Users > Add user.
+2. E-posta/şifre oluştur.
+3. firebase-config.js içindeki PERSONEL_EMAILS listesine e-postayı ekle.

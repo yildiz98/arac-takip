@@ -1,10 +1,12 @@
 {
-  "name": "Hiçkorkmaz Garaj V7 Global Arama",
+  "name": "Hiçkorkmaz Garaj V7 Google Giriş",
   "short_name": "Garaj V7",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
-  "description": "Her ekranda isim, firma ve plaka ile global araç takip sistemi",
-  "icons": []
+  "description": "Mobil uyumlu araç servis takip sistemi",
+  "icons": [],
+  "scope": "./",
+  "orientation": "portrait"
 }

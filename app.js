@@ -1,4 +1,35 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { firebaseConfig, ADMIN_EMAILS, PERSONEL_EMAILS } from "./firebase-config.js";
+
 const STORE_KEY = "hickorkmaz_garaj_v7_data";
+const AUTH_KEY = "hickorkmaz_garaj_v7_google_auth";
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+let activeUser = null;
+
+function normalizeEmail(email){
+  return (email || "").toLocaleLowerCase("tr-TR").trim();
+}
+
+function getRoleForEmail(email){
+  const e = normalizeEmail(email);
+  const admins = (ADMIN_EMAILS || []).map(normalizeEmail);
+  const personnel = (PERSONEL_EMAILS || []).map(normalizeEmail);
+
+  if(admins.includes(e)) return { role:"admin", label:"Admin" };
+  if(personnel.includes(e)) return { role:"personel", label:"Personel" };
+  return null;
+}
+
+function isAdmin(){ return activeUser?.role === "admin"; }
+function isPersonel(){ return activeUser?.role === "personel"; }
 
 const seed = {
   customers: [
@@ -90,7 +121,10 @@ function loadData(){
 }
 function persist(){
   localStorage.setItem(STORE_KEY, JSON.stringify(db));
-  render();
+  setupAuth();
+setupMobileMenu();
+applyAuthState();
+if(activeUser) render();
 }
 function newId(prefix){ return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7); }
 function money(n){ return (Number(n)||0).toLocaleString("tr-TR", {maximumFractionDigits:0}) + " TL"; }
@@ -180,11 +214,167 @@ const pages = {
   detail:"Detay"
 };
 
+
+
+function setupMobileMenu(){
+  const btn = document.getElementById("mobileMenuBtn");
+  const sidebar = document.querySelector(".sidebar");
+  const overlay = document.getElementById("mobileOverlay");
+
+  if(!btn || !sidebar || !overlay) return;
+
+  const close = () => {
+    sidebar.classList.remove("mobile-open");
+    overlay.classList.remove("show");
+  };
+
+  btn.addEventListener("click", () => {
+    sidebar.classList.toggle("mobile-open");
+    overlay.classList.toggle("show");
+  });
+
+  overlay.addEventListener("click", close);
+
+  document.querySelectorAll(".menu-item").forEach(item => {
+    item.addEventListener("click", close);
+  });
+}
+
+function applyAuthState(){
+  const loginScreen = document.getElementById("loginScreen");
+  const layout = document.querySelector(".layout");
+  const quickActions = document.querySelector(".quick-actions");
+  const userText = document.getElementById("activeUserText");
+
+  if(!activeUser){
+    if(loginScreen) loginScreen.classList.remove("hidden");
+    if(layout) layout.classList.add("locked");
+    if(quickActions) quickActions.classList.add("hidden");
+    return;
+  }
+
+  if(loginScreen) loginScreen.classList.add("hidden");
+  if(layout) layout.classList.remove("locked");
+  if(quickActions) quickActions.classList.remove("hidden");
+
+  if(userText){
+    userText.textContent = `${activeUser.label}: ${activeUser.email}`;
+  }
+
+  document.body.dataset.role = activeUser.role;
+
+  // Personel sadece müşteri/firma, araç ve servis kaydı görebilsin/kullanabilsin
+  document.querySelectorAll('[data-page="dashboard"], [data-page="payments"], [data-page="debts"], [data-page="reports"], [data-page="settings"]').forEach(el => {
+    el.style.display = activeUser.role === "admin" ? "" : "none";
+  });
+
+  // Personel ekranı yetkisiz sayfadaysa müşterilere al
+  const activePage = document.querySelector(".page.active")?.id;
+  if(activeUser.role !== "admin" && !["customers","vehicles","services","detail"].includes(activePage)){
+    openPage("customers");
+  }
+
+  // Personel için bazı hızlı aksiyonları kapat
+  const paymentBtn = document.getElementById("btnPayment");
+  if(paymentBtn) paymentBtn.style.display = activeUser.role === "admin" ? "" : "none";
+}
+
+function setupAuth(){
+  const form = document.getElementById("loginForm");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const loginError = document.getElementById("loginError");
+
+  function showLoginError(msg){
+    if(loginError){
+      loginError.textContent = msg;
+      loginError.classList.remove("hidden");
+    }else{
+      alert(msg);
+    }
+  }
+
+  if(form){
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+
+      try{
+        if(loginError) loginError.classList.add("hidden");
+        await signInWithEmailAndPassword(auth, email, password);
+      }catch(err){
+        showLoginError("Giriş başarısız. E-posta veya şifre hatalı olabilir.");
+      }
+    });
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    if(!user){
+      activeUser = null;
+      applyAuthState();
+      return;
+    }
+
+    const access = getRoleForEmail(user.email);
+    if(!access){
+      activeUser = null;
+      signOut(auth);
+      showLoginError(`${user.email} için yetki tanımlı değil. firebase-config.js içinde ADMIN_EMAILS veya PERSONEL_EMAILS listesine ekle.`);
+      applyAuthState();
+      return;
+    }
+
+    activeUser = {
+      uid:user.uid,
+      email:user.email,
+      name:user.email,
+      role:access.role,
+      label:access.label
+    };
+
+    applyAuthState();
+    render();
+  });
+
+  if(logoutBtn){
+    logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+      activeUser = null;
+      applyAuthState();
+    });
+  }
+}
+
+function requireAdmin(){
+  if(!activeUser || activeUser.role !== "admin"){
+    alert("Bu işlem için admin yetkisi gerekir.");
+    return false;
+  }
+  return true;
+}
+
+function requireRecordPermission(){
+  if(!activeUser){
+    alert("Giriş yapman gerekir.");
+    return false;
+  }
+  return true;
+}
+
+
 document.querySelectorAll(".menu-item").forEach(btn => {
   btn.addEventListener("click", () => openPage(btn.dataset.page));
 });
 
 function openPage(page){
+  if(!activeUser){
+    applyAuthState();
+    return;
+  }
+  if(activeUser.role !== "admin" && !["customers","vehicles","services","detail"].includes(page)){
+    alert("Bu sayfa için admin yetkisi gerekir.");
+    page = "customers";
+  }
   if(page !== "detail") lastPageBeforeDetail = page;
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
   document.getElementById(page).classList.add("active");
@@ -192,7 +382,10 @@ function openPage(page){
   document.getElementById("pageTitle").textContent = pages[page] || "Dashboard";
   document.getElementById("pageSubtitle").textContent = "Her ekranda isim, firma veya plaka ile global arama";
   clearSearchOnly();
-  render();
+  setupAuth();
+setupMobileMenu();
+applyAuthState();
+if(activeUser) render();
 }
 
 function stat(label,value,cls=""){
@@ -284,13 +477,23 @@ function renderSettings(){
   document.getElementById("settings").innerHTML = `
     <div class="panel">
       <h3>Ayarlar</h3>
-      <p class="notice">Veriler tarayıcı hafızasında saklanır. GitHub'a yeni dosya yüklemek mevcut kayıtları silmez. Yine de düzenli yedek al.</p>
+      <p class="notice">Firebase e-posta/şifre girişi aktiftir. Admin ve personel e-posta listeleri <b>firebase-config.js</b> dosyasından düzenlenir.</p>
       <div class="toolbar">
         <button class="btn" onclick="exportData()">Verileri Yedekle</button>
         <button class="btn" onclick="document.getElementById('importFile').click()">Yedekten Yükle</button>
         <input id="importFile" class="hidden" type="file" accept="application/json" onchange="importData(event)" />
         <button class="btn ghost" onclick="clearDemo()">Örnek Kayıtları Temizle</button>
       </div>
+    </div>
+
+    <div class="panel">
+      <h3>Yetki Listesi</h3>
+      <p class="notice">
+        Admin tüm yetkilere sahiptir. Personel sadece müşteri/firma, araç ve servis kaydı yapabilir.
+        Yetki vermek için ZIP içindeki <b>firebase-config.js</b> dosyasında ADMIN_EMAILS ve PERSONEL_EMAILS listelerini düzenle.
+      </p>
+      <pre class="code-box">ADMIN_EMAILS = ["admin@aractakip.com"]
+PERSONEL_EMAILS = ["personel1@aractakip.com"]</pre>
     </div>`;
 }
 
@@ -303,14 +506,35 @@ function vehiclesTable(list){
   return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
   ${list.map(v=>`<tr><td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td><td>${getCustomer(v.customerId)?.name || "-"}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td><td>${lastServiceDate(v.id)}</td><td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td><td>${v.note || "-"}</td><td>
       <button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button>
-      <button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
-      <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>
+      ${isAdmin() ? `<button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
+      <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>` : ``}
     </td></tr>`).join("") || emptyRow(7)}
   </tbody></table></div>`;
 }
 function servicesTable(list){
   return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(s=>{const v=getVehicle(s.vehicleId); const c=getCustomer(v?.customerId); return `<tr><td>${s.date || "-"}</td><td>${v ? `<button class="small-btn" onclick="openVehicle('${v.id}')">${v.plate}</button>` : "-"}</td><td>${c?.name || "-"}</td><td>${kmFormat(s.currentKm)}</td><td>${kmFormat(s.nextKm)}</td><td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td><td class="amount">${money(s.laborAmount || 0)}</td><td class="amount">${money(s.partsAmount || 0)}</td><td class="amount">${money(s.amount)}</td><td>${s.note || "-"}</td><td>${v ? `<button class="small-btn" onclick="printSingleService(\'${s.id}\')">Yazdır</button> <button class="small-btn" onclick="downloadSingleServicePdf(\'${s.id}\')">PDF</button> <button class="small-btn" onclick="shareSingleServiceWhatsApp(\'${s.id}\')">WP</button>` : "-"}</td></tr>`}).join("") || emptyRow(11)}
+  ${list.map(s=>{
+    const v=getVehicle(s.vehicleId);
+    const c=getCustomer(v?.customerId);
+    return `<tr>
+      <td>${s.date || "-"}</td>
+      <td>${v ? `<button class="small-btn" onclick="openVehicle('${v.id}')">${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</button>` : "-"}</td>
+      <td>${c?.name || "-"}</td>
+      <td>${kmFormat(s.currentKm)}</td>
+      <td>${kmFormat(s.nextKm)}</td>
+      <td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td>
+      <td class="amount">${money(s.laborAmount || 0)}</td>
+      <td class="amount">${money(s.partsAmount || 0)}</td>
+      <td class="amount">${money(s.amount)}</td>
+      <td>${s.note || "-"}</td>
+      <td>
+        ${isAdmin() ? `
+        <button class="small-btn" onclick="printSingleService('${s.id}')">Yazdır</button>
+        <button class="small-btn" onclick="downloadSingleServicePdf('${s.id}')">PDF</button>
+        <button class="small-btn" onclick="shareSingleServiceWhatsApp('${s.id}')">WP</button>` : `<span class="badge">Personel</span>`}
+      </td>
+    </tr>`;
+  }).join("") || emptyRow(11)}
   </tbody></table></div>`;
 }
 function paymentsTable(list){
@@ -346,6 +570,11 @@ window.openCustomer = function(customerId){
 };
 
 
+
+function canOutput(){
+  if(!requireAdmin()) return false;
+  return true;
+}
 
 function serviceSinglePlainText(serviceId){
   const s = db.services.find(x => x.id === serviceId);
@@ -434,6 +663,7 @@ function serviceSingleHtml(serviceId){
 }
 
 window.printSingleService = function(serviceId){
+  if(!canOutput()) return;
   const w = window.open("", "_blank");
   w.document.open();
   w.document.write(serviceSingleHtml(serviceId));
@@ -441,6 +671,7 @@ window.printSingleService = function(serviceId){
 };
 
 window.downloadSingleServicePdf = function(serviceId){
+  if(!canOutput()) return;
   const w = window.open("", "_blank");
   w.document.open();
   w.document.write(serviceSingleHtml(serviceId));
@@ -449,6 +680,7 @@ window.downloadSingleServicePdf = function(serviceId){
 };
 
 window.shareSingleServiceWhatsApp = function(serviceId){
+  if(!canOutput()) return;
   const text = encodeURIComponent(serviceSinglePlainText(serviceId));
   window.open(`https://wa.me/?text=${text}`, "_blank");
 };
@@ -564,6 +796,7 @@ function serviceHistoryHtml(vehicleId){
 }
 
 window.printServiceHistory = function(vehicleId){
+  if(!canOutput()) return;
   const w = window.open("", "_blank");
   w.document.open();
   w.document.write(serviceHistoryHtml(vehicleId));
@@ -571,6 +804,7 @@ window.printServiceHistory = function(vehicleId){
 };
 
 window.downloadServiceHistoryPdf = function(vehicleId){
+  if(!canOutput()) return;
   const w = window.open("", "_blank");
   w.document.open();
   w.document.write(serviceHistoryHtml(vehicleId));
@@ -579,6 +813,7 @@ window.downloadServiceHistoryPdf = function(vehicleId){
 };
 
 window.shareServiceHistoryWhatsApp = function(vehicleId){
+  if(!canOutput()) return;
   const text = encodeURIComponent(serviceHistoryPlainText(vehicleId));
   window.open(`https://wa.me/?text=${text}`, "_blank");
 };
@@ -592,9 +827,9 @@ window.openVehicle = function(vehicleId){
       <div><span class="badge">Araç Kartı / Plaka Geçmişi</span><h2>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</h2><p>${c?.name || "-"} • ${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn primary" onclick="openCustomer('${v.customerId}')">Bu müşterinin tüm araçlarını göster</button>
-        <button class="btn" onclick="printServiceHistory('${v.id}')">Tüm Geçmişi Yazdır</button>
+        ${isAdmin() ? `<button class="btn" onclick="printServiceHistory('${v.id}')">Tüm Geçmişi Yazdır</button>
         <button class="btn" onclick="downloadServiceHistoryPdf('${v.id}')">Tüm Geçmiş PDF</button>
-        <button class="btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">Tüm Geçmiş WP</button>
+        <button class="btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">Tüm Geçmiş WP</button>` : ``}
         <button class="btn" onclick="openPage('${lastPageBeforeDetail}')">Geri</button>
       </div>
     </div>
@@ -663,6 +898,11 @@ function selectField(label,name,options){ return `<div class="field"><label>${la
 function textareaField(label,name){ return `<div class="field"><label>${label}</label><textarea name="${name}"></textarea></div>`; }
 
 window.openModal = function(type){
+  if(!requireRecordPermission()) return;
+  if(activeUser.role !== "admin" && !["customer","vehicle","service"].includes(type)){
+    alert("Bu işlem için admin yetkisi gerekir.");
+    return;
+  }
   modalType = type;
   const titleMap = {customer:"Müşteri/Firma Ekle", vehicle:"Araç Ekle", service:"Servis Kaydı Ekle", payment:"Tahsilat Ekle"};
   document.getElementById("modalTitle").textContent = titleMap[type];
@@ -772,7 +1012,22 @@ modalForm.addEventListener("submit", function(e){
   persist();
 });
 
+window.saveUserPasswords = function(){
+  if(!requireAdmin()) return;
+  if(!requireAdmin()) return;
+  const users = getUsers();
+  const adminPass = document.getElementById("adminPassInput")?.value.trim();
+  const personelPass = document.getElementById("personelPassInput")?.value.trim();
+
+  if(adminPass) users.admin.password = adminPass;
+  if(personelPass) users.personel.password = personelPass;
+
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  alert("Şifreler kaydedildi.");
+};
+
 window.exportData = function(){
+  if(!requireAdmin()) return;
   const blob = new Blob([JSON.stringify(db,null,2)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -780,6 +1035,7 @@ window.exportData = function(){
   URL.revokeObjectURL(url);
 };
 window.importData = function(event){
+  if(!requireAdmin()) return;
   const file = event.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = () => {
@@ -792,6 +1048,7 @@ window.importData = function(event){
   reader.readAsText(file);
 };
 window.clearDemo = function(){
+  if(!requireAdmin()) return;
   db.customers = db.customers.filter(x=>!x.id.includes("_demo_"));
   db.vehicles = db.vehicles.filter(x=>!x.id.includes("_demo_"));
   db.services = db.services.filter(x=>!x.id.includes("_demo_"));
@@ -799,4 +1056,7 @@ window.clearDemo = function(){
   persist();
 };
 
-render();
+setupAuth();
+setupMobileMenu();
+applyAuthState();
+if(activeUser) render();

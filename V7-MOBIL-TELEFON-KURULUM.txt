@@ -1,0 +1,20 @@
+Hiçkorkmaz Garaj V7 - Mobil / Telefon Uyumlu Sürüm
+
+Eklenen:
+- Telefonda açılır menü.
+- Telefon ekranına uygun dashboard.
+- Mobil giriş ekranı.
+- Büyük dokunmatik butonlar.
+- PWA / ana ekrana ekleme desteği.
+
+Yükleme:
+1. ZIP'i indir.
+2. ZIP'i aç.
+3. Dosyaları GitHub Pages yayın branch'ine yükle.
+4. Commit changes de.
+5. Telefonda siteyi aç.
+6. iPhone: Safari > Paylaş > Ana Ekrana Ekle.
+7. Android: Chrome > Üç nokta > Ana ekrana ekle.
+
+Not:
+Yükledikten sonra telefonda eski sürüm görünürse tarayıcı geçmişini/cache temizle veya siteyi gizli sekmede aç.

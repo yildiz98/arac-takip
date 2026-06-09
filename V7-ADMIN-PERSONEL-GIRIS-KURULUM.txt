@@ -1,0 +1,23 @@
+Hiçkorkmaz Garaj V7 - Admin / Personel Girişi
+
+Eklenen:
+- Admin girişi
+- Personel girişi
+- Çıkış butonu
+- Kullanıcı bilgisi
+- Admin şifre değiştirme
+- Personel için Ayarlar/Raporlar gizleme
+
+Varsayılan:
+Admin şifre: 1234
+Personel şifre: 0000
+
+Yükleme:
+1. ZIP'i indir.
+2. ZIP'i aç.
+3. Dosyaları GitHub Pages yayın branch'ine yükle.
+4. Commit changes de.
+5. Siteyi Ctrl + F5 ile yenile.
+
+Not:
+Bu temel giriş sistemi tarayıcı tabanlıdır. Gerçek sunucu güvenliği sağlamaz; ama programı düzenli kullanmak ve personel/admin ayrımı için uygundur.
