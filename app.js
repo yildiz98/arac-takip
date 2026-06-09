@@ -1,24 +1,41 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { firebaseConfig, ADMIN_EMAILS, PERSONEL_EMAILS } from "./firebase-config.js";
+
 const STORE_KEY = "hickorkmaz_garaj_v7_data";
+const AUTH_KEY = "hickorkmaz_garaj_v7_google_auth";
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+let activeUser = null;
+
+function normalizeEmail(email){
+  return (email || "").toLocaleLowerCase("tr-TR").trim();
+}
+
+function getRoleForEmail(email){
+  const e = normalizeEmail(email);
+  const admins = (ADMIN_EMAILS || []).map(normalizeEmail);
+  const personnel = (PERSONEL_EMAILS || []).map(normalizeEmail);
+
+  if(admins.includes(e)) return { role:"admin", label:"Admin" };
+  if(personnel.includes(e)) return { role:"personel", label:"Personel" };
+  return null;
+}
+
+function isAdmin(){ return activeUser?.role === "admin"; }
+function isPersonel(){ return activeUser?.role === "personel"; }
 
 const seed = {
-  customers: [
-    { id:"c_demo_1", name:"Ahmet Yılmaz", phone:"0533 000 00 00", type:"Şahıs", note:"Örnek müşteri" },
-    { id:"c_demo_2", name:"ABC Lojistik Ltd.", phone:"0542 111 11 11", type:"Firma", note:"Örnek firma / filo" }
-  ],
-  vehicles: [
-    { id:"v_demo_1", customerId:"c_demo_1", plate:"33 ABC 123", brand:"Ford", model:"Transit", year:"2018", note:"" },
-    { id:"v_demo_2", customerId:"c_demo_1", plate:"33 DEF 456", brand:"Fiat", model:"Doblo", year:"2020", note:"" },
-    { id:"v_demo_3", customerId:"c_demo_2", plate:"33 FİL 001", brand:"Mercedes", model:"Sprinter", year:"2021", note:"Şirket aracı" }
-  ],
-  services: [
-    { id:"s_demo_1", vehicleId:"v_demo_1", date:"2026-06-09", items:["Motor Yağı","Yağ Filtresi"], title:"Yağ bakımı", currentKm:125000, nextKm:135000, laborAmount:1000, partsAmount:4000, amount:5000, note:"Yağ + filtre değişti" },
-    { id:"s_demo_2", vehicleId:"v_demo_2", date:"2026-06-01", items:["Ön Balata"], title:"Fren bakımı", currentKm:98000, nextKm:108000, laborAmount:500, partsAmount:2000, amount:2500, note:"Balata değişti" },
-    { id:"s_demo_3", vehicleId:"v_demo_3", date:"2026-05-28", items:["Genel Kontrol","Motor Yağı","Hava Filtresi"], title:"Genel bakım", currentKm:210000, nextKm:220000, laborAmount:2500, partsAmount:9500, amount:12000, note:"Filo bakım kaydı" }
-  ],
-  payments: [
-    { id:"p_demo_1", customerId:"c_demo_1", vehicleId:"v_demo_1", date:"2026-06-09", amount:2000, note:"Nakit ödeme" },
-    { id:"p_demo_2", customerId:"c_demo_2", vehicleId:"v_demo_3", date:"2026-06-09", amount:5000, note:"Kısmi tahsilat" }
-  ]
+  customers: [],
+  vehicles: [],
+  services: [],
+  payments: []
 };
 
 let db = loadData();
@@ -90,7 +107,10 @@ function loadData(){
 }
 function persist(){
   localStorage.setItem(STORE_KEY, JSON.stringify(db));
-  render();
+  setupAuth();
+setupMobileMenu();
+applyAuthState();
+if(activeUser) render();
 }
 function newId(prefix){ return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7); }
 function money(n){ return (Number(n)||0).toLocaleString("tr-TR", {maximumFractionDigits:0}) + " TL"; }
@@ -168,6 +188,13 @@ function remainingKm(vehicleId){
   return next - current;
 }
 
+function paymentTypeText(p){
+  if(p.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
+  if(p.paymentType === "customer_only") return "Sadece Cari Hesap";
+  return p.vehicleId ? "Araç + Cari Hesap" : "Sadece Cari Hesap";
+}
+
+
 const pages = {
   dashboard:"Dashboard",
   customers:"Müşteriler / Firmalar",
@@ -180,11 +207,167 @@ const pages = {
   detail:"Detay"
 };
 
+
+
+function setupMobileMenu(){
+  const btn = document.getElementById("mobileMenuBtn");
+  const sidebar = document.querySelector(".sidebar");
+  const overlay = document.getElementById("mobileOverlay");
+
+  if(!btn || !sidebar || !overlay) return;
+
+  const close = () => {
+    sidebar.classList.remove("mobile-open");
+    overlay.classList.remove("show");
+  };
+
+  btn.addEventListener("click", () => {
+    sidebar.classList.toggle("mobile-open");
+    overlay.classList.toggle("show");
+  });
+
+  overlay.addEventListener("click", close);
+
+  document.querySelectorAll(".menu-item").forEach(item => {
+    item.addEventListener("click", close);
+  });
+}
+
+function applyAuthState(){
+  const loginScreen = document.getElementById("loginScreen");
+  const layout = document.querySelector(".layout");
+  const quickActions = document.querySelector(".quick-actions");
+  const userText = document.getElementById("activeUserText");
+
+  if(!activeUser){
+    if(loginScreen) loginScreen.classList.remove("hidden");
+    if(layout) layout.classList.add("locked");
+    if(quickActions) quickActions.classList.add("hidden");
+    return;
+  }
+
+  if(loginScreen) loginScreen.classList.add("hidden");
+  if(layout) layout.classList.remove("locked");
+  if(quickActions) quickActions.classList.remove("hidden");
+
+  if(userText){
+    userText.textContent = `${activeUser.label}: ${activeUser.email}`;
+  }
+
+  document.body.dataset.role = activeUser.role;
+
+  // Personel sadece müşteri/firma, araç ve servis kaydı görebilsin/kullanabilsin
+  document.querySelectorAll('[data-page="dashboard"], [data-page="payments"], [data-page="debts"], [data-page="reports"], [data-page="settings"]').forEach(el => {
+    el.style.display = activeUser.role === "admin" ? "" : "none";
+  });
+
+  // Personel ekranı yetkisiz sayfadaysa müşterilere al
+  const activePage = document.querySelector(".page.active")?.id;
+  if(activeUser.role !== "admin" && !["customers","vehicles","services","detail"].includes(activePage)){
+    openPage("customers");
+  }
+
+  // Personel için bazı hızlı aksiyonları kapat
+  const paymentBtn = document.getElementById("btnPayment");
+  if(paymentBtn) paymentBtn.style.display = activeUser.role === "admin" ? "" : "none";
+}
+
+function setupAuth(){
+  const form = document.getElementById("loginForm");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const loginError = document.getElementById("loginError");
+
+  function showLoginError(msg){
+    if(loginError){
+      loginError.textContent = msg;
+      loginError.classList.remove("hidden");
+    }else{
+      alert(msg);
+    }
+  }
+
+  if(form){
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+
+      try{
+        if(loginError) loginError.classList.add("hidden");
+        await signInWithEmailAndPassword(auth, email, password);
+      }catch(err){
+        showLoginError("Giriş başarısız. E-posta veya şifre hatalı olabilir.");
+      }
+    });
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    if(!user){
+      activeUser = null;
+      applyAuthState();
+      return;
+    }
+
+    const access = getRoleForEmail(user.email);
+    if(!access){
+      activeUser = null;
+      signOut(auth);
+      showLoginError(`${user.email} için yetki tanımlı değil. firebase-config.js içinde ADMIN_EMAILS veya PERSONEL_EMAILS listesine ekle.`);
+      applyAuthState();
+      return;
+    }
+
+    activeUser = {
+      uid:user.uid,
+      email:user.email,
+      name:user.email,
+      role:access.role,
+      label:access.label
+    };
+
+    applyAuthState();
+    render();
+  });
+
+  if(logoutBtn){
+    logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+      activeUser = null;
+      applyAuthState();
+    });
+  }
+}
+
+function requireAdmin(){
+  if(!activeUser || activeUser.role !== "admin"){
+    alert("Bu işlem için admin yetkisi gerekir.");
+    return false;
+  }
+  return true;
+}
+
+function requireRecordPermission(){
+  if(!activeUser){
+    alert("Giriş yapman gerekir.");
+    return false;
+  }
+  return true;
+}
+
+
 document.querySelectorAll(".menu-item").forEach(btn => {
   btn.addEventListener("click", () => openPage(btn.dataset.page));
 });
 
 function openPage(page){
+  if(!activeUser){
+    applyAuthState();
+    return;
+  }
+  if(activeUser.role !== "admin" && !["customers","vehicles","services","detail"].includes(page)){
+    alert("Bu sayfa için admin yetkisi gerekir.");
+    page = "customers";
+  }
   if(page !== "detail") lastPageBeforeDetail = page;
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
   document.getElementById(page).classList.add("active");
@@ -192,7 +375,10 @@ function openPage(page){
   document.getElementById("pageTitle").textContent = pages[page] || "Dashboard";
   document.getElementById("pageSubtitle").textContent = "Her ekranda isim, firma veya plaka ile global arama";
   clearSearchOnly();
-  render();
+  setupAuth();
+setupMobileMenu();
+applyAuthState();
+if(activeUser) render();
 }
 
 function stat(label,value,cls=""){
@@ -268,7 +454,7 @@ window.filterServices = function(){
   document.getElementById("serviceList").innerHTML = servicesTable(list);
 }
 function renderPayments(){
-  document.getElementById("payments").innerHTML = `<div class="panel"><div class="panel-head"><h3>Günlük Tahsilat Takibi</h3><button class="small-btn" onclick="openModal('payment')">+ Yeni</button></div>
+  document.getElementById("payments").innerHTML = `<div class="panel"><div class="panel-head"><h3>Tahsilat Takibi</h3><button class="small-btn" onclick="openModal('payment')">+ Yeni</button></div>
     <div class="grid three">${stat("Bugünkü Tahsilat", money(db.payments.filter(p=>p.date===today()).reduce((t,p)=>t+Number(p.amount||0),0)), "good")}${stat("Toplam Tahsilat", money(db.payments.reduce((t,p)=>t+Number(p.amount||0),0)), "good")}${stat("Tahsilat Kaydı", db.payments.length)}</div><br>
     ${paymentsTable(db.payments.slice().sort((a,b)=>safe(b.date).localeCompare(safe(a.date))))}</div>`;
 }
@@ -284,13 +470,23 @@ function renderSettings(){
   document.getElementById("settings").innerHTML = `
     <div class="panel">
       <h3>Ayarlar</h3>
-      <p class="notice">Veriler tarayıcı hafızasında saklanır. GitHub'a yeni dosya yüklemek mevcut kayıtları silmez. Yine de düzenli yedek al.</p>
+      <p class="notice">Firebase e-posta/şifre girişi aktiftir. Admin ve personel e-posta listeleri <b>firebase-config.js</b> dosyasından düzenlenir.</p>
       <div class="toolbar">
         <button class="btn" onclick="exportData()">Verileri Yedekle</button>
         <button class="btn" onclick="document.getElementById('importFile').click()">Yedekten Yükle</button>
         <input id="importFile" class="hidden" type="file" accept="application/json" onchange="importData(event)" />
-        <button class="btn ghost" onclick="clearDemo()">Örnek Kayıtları Temizle</button>
+        <button class="btn ghost" onclick="clearDemo()">Örnek Kayıtları Temizle</button><button class="btn danger-btn" onclick="resetAllData()">Tüm Verileri Sıfırla</button>
       </div>
+    </div>
+
+    <div class="panel">
+      <h3>Yetki Listesi</h3>
+      <p class="notice">
+        Admin tüm yetkilere sahiptir. Personel sadece müşteri/firma, araç ve servis kaydı yapabilir.
+        Yetki vermek için ZIP içindeki <b>firebase-config.js</b> dosyasında ADMIN_EMAILS ve PERSONEL_EMAILS listelerini düzenle.
+      </p>
+      <pre class="code-box">ADMIN_EMAILS = ["admin@aractakip.com"]
+PERSONEL_EMAILS = ["personel1@aractakip.com"]</pre>
     </div>`;
 }
 
@@ -300,22 +496,57 @@ function customersTable(list){
   </tbody></table></div>`;
 }
 function vehiclesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
   ${list.map(v=>`<tr><td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td><td>${getCustomer(v.customerId)?.name || "-"}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td><td>${lastServiceDate(v.id)}</td><td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td><td>${v.note || "-"}</td><td>
       <button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button>
-      <button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
-      <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>
+      ${isAdmin() ? `<button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
+      <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>` : ``}
     </td></tr>`).join("") || emptyRow(7)}
   </tbody></table></div>`;
 }
 function servicesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(s=>{const v=getVehicle(s.vehicleId); const c=getCustomer(v?.customerId); return `<tr><td>${s.date || "-"}</td><td>${v ? `<button class="small-btn" onclick="openVehicle('${v.id}')">${v.plate}</button>` : "-"}</td><td>${c?.name || "-"}</td><td>${kmFormat(s.currentKm)}</td><td>${kmFormat(s.nextKm)}</td><td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td><td class="amount">${money(s.laborAmount || 0)}</td><td class="amount">${money(s.partsAmount || 0)}</td><td class="amount">${money(s.amount)}</td><td>${s.note || "-"}</td><td>${v ? `<button class="small-btn" onclick="printServiceHistory(\'${v.id}\')">Yazdır</button> <button class="small-btn" onclick="shareServiceHistoryWhatsApp(\'${v.id}\')">WP</button>` : "-"}</td></tr>`}).join("") || emptyRow(11)}
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
+  ${list.map(s=>{
+    const v=getVehicle(s.vehicleId);
+    const c=getCustomer(v?.customerId);
+    return `<tr>
+      <td>${s.date || "-"}</td>
+      <td>${v ? `<button class="small-btn" onclick="openVehicle('${v.id}')">${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</button>` : "-"}</td>
+      <td>${c?.name || "-"}</td>
+      <td>${kmFormat(s.currentKm)}</td>
+      <td>${kmFormat(s.nextKm)}</td>
+      <td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td>
+      <td class="amount">${money(s.laborAmount || 0)}</td>
+      <td class="amount">${money(s.partsAmount || 0)}</td>
+      <td class="amount">${money(s.amount)}</td>
+      <td>${s.note || "-"}</td>
+      <td>${s.createdBy || "-"}</td>
+      <td>
+        ${isAdmin() ? `
+        <button class="small-btn" onclick="printSingleService('${s.id}')">Yazdır</button>
+        <button class="small-btn" onclick="downloadSingleServicePdf('${s.id}')">PDF</button>
+        <button class="small-btn" onclick="shareSingleServiceWhatsApp('${s.id}')">WP</button>` : `<span class="badge">Personel</span>`}
+      </td>
+    </tr>`;
+  }).join("") || emptyRow(12)}
   </tbody></table></div>`;
 }
 function paymentsTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Müşteri/Firma</th><th>Plaka</th><th>Tutar</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(p=>{const v=getVehicle(p.vehicleId); const c=getCustomer(p.customerId); return `<tr><td>${p.date || "-"}</td><td>${c?.name || "-"}</td><td>${v?.plate || "-"}</td><td class="amount good">${money(p.amount)}</td><td>${p.note || "-"}</td></tr>`}).join("") || emptyRow(5)}
+  return `<div class="table-wrap"><table><thead><tr><th>Ödeme Tarihi</th><th>Şahıs/Firma</th><th>Plaka</th><th>Tür</th><th>Tutar</th><th>Not</th><th>İşlemi Yapan</th></tr></thead><tbody>
+  ${list.map(p=>{
+    const v = getVehicle(p.vehicleId);
+    const c = getCustomer(p.customerId);
+    const plateText = v ? (v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate) : (p.manualPlate || "-");
+    return `<tr>
+      <td>${p.date || "-"}</td>
+      <td>${c?.name || "-"}</td>
+      <td>${plateText}</td>
+      <td><span class="badge">${paymentTypeText(p)}</span></td>
+      <td class="amount good">${money(p.amount)}</td>
+      <td>${p.note || "-"}</td>
+      <td>${p.createdBy || "-"}</td>
+    </tr>`;
+  }).join("") || emptyRow(7)}
   </tbody></table></div>`;
 }
 function customerDebtTable(onlyDebt){
@@ -343,6 +574,123 @@ window.openCustomer = function(customerId){
     </div>
     <div class="panel"><div class="panel-head"><h3>Kayıtlı Araçlar</h3></div>${vehiclesTable(vehicles)}</div>`;
   openPage("detail");
+};
+
+
+
+function canOutput(){
+  if(!requireAdmin()) return false;
+  return true;
+}
+
+function serviceSinglePlainText(serviceId){
+  const s = db.services.find(x => x.id === serviceId);
+  if(!s) return "Servis kaydı bulunamadı.";
+  const v = getVehicle(s.vehicleId);
+  const c = getCustomer(v?.customerId);
+  const vehicleName = `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
+  let text = `Hiçkorkmaz Garaj - Servis Kaydı\n\n`;
+  text += `Müşteri/Firma: ${c?.name || "-"}\n`;
+  text += `Araç: ${vehicleName}\n`;
+  text += `Marka/Model: ${[v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-"}\n`;
+  text += `Tarih: ${s.date || "-"}\n`;
+  text += `Geldiği KM: ${kmFormat(s.currentKm)}\n`;
+  text += `Bir Sonraki Bakım KM: ${kmFormat(s.nextKm)}\n`;
+  text += `Yapılan İşlemler: ${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n`;
+  text += `İşçilik: ${money(s.laborAmount || 0)}\n`;
+  text += `Parça: ${money(s.partsAmount || 0)}\n`;
+  text += `Toplam: ${money(s.amount)}\n`;
+  text += `Not: ${s.note || "-"}\n` +
+    `İşlemi Yapan: ${s.createdBy || "-"}\n`;
+  return text;
+}
+
+function serviceSingleHtml(serviceId){
+  const s = db.services.find(x => x.id === serviceId);
+  if(!s) return "<p>Servis kaydı bulunamadı.</p>";
+  const v = getVehicle(s.vehicleId);
+  const c = getCustomer(v?.customerId);
+  const vehicleName = `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
+
+  return `
+    <!doctype html>
+    <html lang="tr">
+    <head>
+      <meta charset="utf-8">
+      <title>Servis Kaydı - ${vehicleName}</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#111;margin:24px}
+        .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:16px}
+        h1{margin:0;font-size:24px}
+        h2{margin:4px 0 0;font-size:18px}
+        p{margin:5px 0}
+        .muted{color:#555}
+        .summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
+        .box{border:1px solid #ccc;border-radius:8px;padding:10px}
+        .box span{display:block;color:#666;font-size:12px}
+        .box b{display:block;margin-top:5px;font-size:16px}
+        table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px}
+        th,td{border:1px solid #ccc;padding:9px;text-align:left;vertical-align:top}
+        th{background:#f2f2f2;width:220px}
+        .footer{margin-top:24px;color:#666;font-size:12px}
+        @media print{button{display:none} body{margin:12px}}
+      </style>
+    </head>
+    <body>
+      <button onclick="window.print()" style="padding:10px 14px;margin-bottom:14px">Yazdır / PDF Kaydet</button>
+      <div class="head">
+        <div>
+          <h1>Hiçkorkmaz Garaj</h1>
+          <h2>Tek Servis Kaydı</h2>
+          <p class="muted">Seçilen işlem dökümü</p>
+        </div>
+        <div><p><b>Çıktı Tarihi:</b> ${today()}</p></div>
+      </div>
+
+      <div class="summary">
+        <div class="box"><span>Müşteri/Firma</span><b>${c?.name || "-"}</b></div>
+        <div class="box"><span>Araç</span><b>${vehicleName}</b></div>
+        <div class="box"><span>Marka/Model</span><b>${[v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-"}</b></div>
+        <div class="box"><span>Servis Tarihi</span><b>${s.date || "-"}</b></div>
+      </div>
+
+      <table>
+        <tr><th>Geldiği KM</th><td>${kmFormat(s.currentKm)}</td></tr>
+        <tr><th>Bir Sonraki Bakım KM</th><td>${kmFormat(s.nextKm)}</td></tr>
+        <tr><th>Yapılan İşlemler</th><td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td></tr>
+        <tr><th>İşçilik</th><td>${money(s.laborAmount || 0)}</td></tr>
+        <tr><th>Parça</th><td>${money(s.partsAmount || 0)}</td></tr>
+        <tr><th>Toplam</th><td><b>${money(s.amount)}</b></td></tr>
+        <tr><th>Not</th><td>${s.note || "-"}</td></tr><tr><th>İşlemi Yapan</th><td>${s.createdBy || "-"}</td></tr>
+      </table>
+
+      <div class="footer">Bu çıktı Hiçkorkmaz Garaj V7 sistemi üzerinden oluşturulmuştur.</div>
+    </body>
+    </html>
+  `;
+}
+
+window.printSingleService = function(serviceId){
+  if(!canOutput()) return;
+  const w = window.open("", "_blank");
+  w.document.open();
+  w.document.write(serviceSingleHtml(serviceId));
+  w.document.close();
+};
+
+window.downloadSingleServicePdf = function(serviceId){
+  if(!canOutput()) return;
+  const w = window.open("", "_blank");
+  w.document.open();
+  w.document.write(serviceSingleHtml(serviceId));
+  w.document.close();
+  setTimeout(() => w.print(), 500);
+};
+
+window.shareSingleServiceWhatsApp = function(serviceId){
+  if(!canOutput()) return;
+  const text = encodeURIComponent(serviceSinglePlainText(serviceId));
+  window.open(`https://wa.me/?text=${text}`, "_blank");
 };
 
 
@@ -456,6 +804,7 @@ function serviceHistoryHtml(vehicleId){
 }
 
 window.printServiceHistory = function(vehicleId){
+  if(!canOutput()) return;
   const w = window.open("", "_blank");
   w.document.open();
   w.document.write(serviceHistoryHtml(vehicleId));
@@ -463,6 +812,7 @@ window.printServiceHistory = function(vehicleId){
 };
 
 window.downloadServiceHistoryPdf = function(vehicleId){
+  if(!canOutput()) return;
   const w = window.open("", "_blank");
   w.document.open();
   w.document.write(serviceHistoryHtml(vehicleId));
@@ -471,6 +821,7 @@ window.downloadServiceHistoryPdf = function(vehicleId){
 };
 
 window.shareServiceHistoryWhatsApp = function(vehicleId){
+  if(!canOutput()) return;
   const text = encodeURIComponent(serviceHistoryPlainText(vehicleId));
   window.open(`https://wa.me/?text=${text}`, "_blank");
 };
@@ -484,9 +835,9 @@ window.openVehicle = function(vehicleId){
       <div><span class="badge">Araç Kartı / Plaka Geçmişi</span><h2>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</h2><p>${c?.name || "-"} • ${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn primary" onclick="openCustomer('${v.customerId}')">Bu müşterinin tüm araçlarını göster</button>
-        <button class="btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
-        <button class="btn" onclick="downloadServiceHistoryPdf('${v.id}')">PDF</button>
-        <button class="btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WhatsApp</button>
+        ${isAdmin() ? `<button class="btn" onclick="printServiceHistory('${v.id}')">Tüm Geçmişi Yazdır</button>
+        <button class="btn" onclick="downloadServiceHistoryPdf('${v.id}')">Tüm Geçmiş PDF</button>
+        <button class="btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">Tüm Geçmiş WP</button>` : ``}
         <button class="btn" onclick="openPage('${lastPageBeforeDetail}')">Geri</button>
       </div>
     </div>
@@ -555,6 +906,11 @@ function selectField(label,name,options){ return `<div class="field"><label>${la
 function textareaField(label,name){ return `<div class="field"><label>${label}</label><textarea name="${name}"></textarea></div>`; }
 
 window.openModal = function(type){
+  if(!requireRecordPermission()) return;
+  if(activeUser.role !== "admin" && !["customer","vehicle","service"].includes(type)){
+    alert("Bu işlem için admin yetkisi gerekir.");
+    return;
+  }
   modalType = type;
   const titleMap = {customer:"Müşteri/Firma Ekle", vehicle:"Araç Ekle", service:"Servis Kaydı Ekle", payment:"Tahsilat Ekle"};
   document.getElementById("modalTitle").textContent = titleMap[type];
@@ -573,7 +929,7 @@ window.openModal = function(type){
     setTimeout(() => { bindServiceTotalPreview(); bindServiceTargetFinder(); }, 0);
   }
   if(type === "payment"){
-    document.getElementById("modalBody").innerHTML = `${selectField("Plaka","vehicleId",vehicleOptions)}${field("Tahsilat Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}`;
+    document.getElementById("modalBody").innerHTML = `${field("Şahıs / Firma Adı","customerName","text","",false)}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka kayıtlıysa ödeme araç + cari hesaptan düşer. Plaka boşsa sadece şahıs/firma cari hesabından düşer.</p>`;
   }
   modal.showModal();
 };
@@ -653,18 +1009,61 @@ modalForm.addEventListener("submit", function(e){
     const laborAmount = Number(obj.laborAmount || 0);
     const partsAmount = Number(obj.partsAmount || 0);
     const totalAmount = laborAmount + partsAmount;
-    db.services.push({ id:newId("s"), vehicleId:foundVehicle.id, date:obj.date, currentKm:currentKm, nextKm:Number(obj.nextKm || 0), items:selectedItems, title:obj.title, laborAmount:laborAmount, partsAmount:partsAmount, amount:totalAmount, note:obj.note });
+    db.services.push({ id:newId("s"), vehicleId:foundVehicle.id, date:obj.date, currentKm:currentKm, nextKm:Number(obj.nextKm || 0), items:selectedItems, title:obj.title, laborAmount:laborAmount, partsAmount:partsAmount, amount:totalAmount, note:obj.note, createdBy:activeUser?.email || "-", createdByRole:activeUser?.role || "-", createdAt:new Date().toISOString() });
   }
   if(modalType === "payment"){
-    const v = getVehicle(obj.vehicleId);
-    db.payments.push({ id:newId("p"), customerId:v?.customerId, vehicleId:obj.vehicleId, date:obj.date, amount:Number(obj.amount||0), note:obj.note });
+    const typedCustomerName = safe(obj.customerName).trim();
+    const typedPlate = safe(obj.plate).trim();
+    const foundVehicle = typedPlate ? findVehicleByPlate(typedPlate) : null;
+
+    let targetCustomer = null;
+
+    if(foundVehicle){
+      // Plaka varsa: araç + cari hesap
+      targetCustomer = getCustomer(foundVehicle.customerId);
+    }else{
+      // Plaka yoksa veya plaka kayıtlı değilse: sadece cari hesap
+      if(!typedCustomerName){
+        alert("Plaka kayıtlı değilse veya plaka boşsa Şahıs/Firma Adı yazman gerekir.");
+        return;
+      }
+      targetCustomer = findOrCreateCustomerByName(typedCustomerName, "");
+    }
+
+    db.payments.push({
+      id:newId("p"),
+      customerId:targetCustomer.id,
+      vehicleId:foundVehicle ? foundVehicle.id : "",
+      manualPlate:typedPlate ? typedPlate.toLocaleUpperCase("tr-TR") : "",
+      paymentType:foundVehicle ? "vehicle_customer" : "customer_only",
+      date:obj.date,
+      amount:Number(obj.amount||0),
+      note:obj.note,
+      createdBy:activeUser?.email || "-",
+      createdAt:new Date().toISOString()
+    });
   }
 
   modal.close();
   persist();
 });
 
+window.saveUserPasswords = function(){
+  if(!requireAdmin()) return;
+  if(!requireAdmin()) return;
+  const users = getUsers();
+  const adminPass = document.getElementById("adminPassInput")?.value.trim();
+  const personelPass = document.getElementById("personelPassInput")?.value.trim();
+
+  if(adminPass) users.admin.password = adminPass;
+  if(personelPass) users.personel.password = personelPass;
+
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  alert("Şifreler kaydedildi.");
+};
+
 window.exportData = function(){
+  if(!requireAdmin()) return;
   const blob = new Blob([JSON.stringify(db,null,2)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -672,6 +1071,7 @@ window.exportData = function(){
   URL.revokeObjectURL(url);
 };
 window.importData = function(event){
+  if(!requireAdmin()) return;
   const file = event.target.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = () => {
@@ -683,7 +1083,17 @@ window.importData = function(event){
   };
   reader.readAsText(file);
 };
+window.resetAllData = function(){
+  if(!requireAdmin()) return;
+  const ok = confirm("Tüm müşteri, araç, servis ve tahsilat kayıtları silinecek. Emin misin?");
+  if(!ok) return;
+  db = { customers: [], vehicles: [], services: [], payments: [] };
+  persist();
+  alert("Sistem temizlendi.");
+};
+
 window.clearDemo = function(){
+  if(!requireAdmin()) return;
   db.customers = db.customers.filter(x=>!x.id.includes("_demo_"));
   db.vehicles = db.vehicles.filter(x=>!x.id.includes("_demo_"));
   db.services = db.services.filter(x=>!x.id.includes("_demo_"));
@@ -691,4 +1101,7 @@ window.clearDemo = function(){
   persist();
 };
 
-render();
+setupAuth();
+setupMobileMenu();
+applyAuthState();
+if(activeUser) render();
