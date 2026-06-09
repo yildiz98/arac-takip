@@ -79,3 +79,13 @@ Firebase Console'da:
 - Authentication > Sign-in method > Email/Password aktif olmalı.
 - Authentication > Settings > Authorized domains içinde `yildiz98.github.io` olmalı.
 - Authentication > Users kısmında admin/personel kullanıcıları oluşturulmuş olmalı.
+
+
+## Stabil Tahsilat Mantığı Güncellemesi
+
+Sistemi bozmadan sadece tahsilat mantığı güncellendi:
+
+- Plaka kayıtlıysa: ödeme araç borcundan ve müşteri/firma cari hesabından düşer.
+- Plaka boşsa: ödeme sadece şahıs/firma cari hesabından düşer.
+- Plaka kayıtlı değilse: şahıs/firma adı zorunludur ve ödeme sadece cari hesap tahsilatı olur.
+- Tahsilat tablosuna ödeme türü eklendi.
