@@ -1,14 +1,9 @@
 {
-  "name": "HİÇKORKMAZ GARAJ",
-  "short_name": "HİÇKORKMAZ",
-  "description": "Araç Servis ve Cari Takip Sistemi",
-  "start_url": "./?v=6",
+  "name": "Hiçkorkmaz Garaj V7",
+  "short_name": "Garaj V7",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0b348d",
-  "theme_color": "#0b348d",
-  "orientation": "portrait-primary",
-  "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
-  ]
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": []
 }

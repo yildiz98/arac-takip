@@ -1,163 +1,75 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#111827" />
-  <title>Araç Servis Takip</title>
-  <link rel="manifest" href="manifest.json" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hiçkorkmaz Garaj V7</title>
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div>
-      <h1>Araç Servis Takip</h1>
-      <p id="userInfo">Giriş bekleniyor</p>
-    </div>
-    <button id="installBtn" class="ghost hidden">Ana ekrana ekle</button>
-    <button id="logoutBtn" class="ghost hidden">Çıkış</button>
-  </header>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">HG</div>
+        <div>
+          <h1>Hiçkorkmaz Garaj</h1>
+          <span>V7 Filo & Servis Takip</span>
+        </div>
+      </div>
 
-  <main>
-    <section id="loginView" class="card auth-card">
-      <h2>Yetkili Girişi</h2>
-      <p class="muted">Sadece patron ve çalışan hesapları giriş yapabilir.</p>
-      <form id="loginForm" class="grid">
-        <label>E-posta<input id="email" type="email" autocomplete="email" required /></label>
-        <label>Şifre<input id="password" type="password" autocomplete="current-password" required /></label>
-        <button type="submit">Giriş Yap</button>
-      </form>
-    </section>
-
-    <section id="appView" class="hidden">
-      <nav class="tabs">
-        <button class="tab active" data-tab="dashboard">Özet</button>
-        <button class="tab" data-tab="vehicles">Araçlar</button>
-        <button class="tab" data-tab="service">Servis</button>
-        <button class="tab" data-tab="history">Geçmiş</button>
-        <button class="tab" data-tab="accounts">Cari</button>
-        <button class="tab" data-tab="backup">Yedek</button>
+      <nav>
+        <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+        <button class="nav-btn" data-page="customers">Müşteriler / Firmalar</button>
+        <button class="nav-btn" data-page="vehicles">Araçlar</button>
+        <button class="nav-btn" data-page="services">Servis Kayıtları</button>
+        <button class="nav-btn" data-page="payments">Tahsilatlar</button>
+        <button class="nav-btn" data-page="debts">Borç Takibi</button>
+        <button class="nav-btn" data-page="reports">Raporlar</button>
       </nav>
+    </aside>
 
-      <section id="dashboard" class="panel active">
-        <div class="stats">
-          <article><b id="totalVehicles">0</b><span>Araç</span></article>
-          <article><b id="totalServices">0</b><span>Servis</span></article>
-          <article><b id="totalCost">₺0,00</b><span>Genel Ciro</span></article>
-          <article><b id="totalReceivable">₺0,00</b><span>Toplam Alacak</span></article>
-          <article><b id="monthServices">0</b><span>Bu Ay Servis</span></article>
-          <article><b id="monthLabor">₺0,00</b><span>Bu Ay İşçilik</span></article>
-          <article><b id="monthParts">₺0,00</b><span>Bu Ay Parça</span></article>
-          <article><b id="monthRevenue">₺0,00</b><span>Bu Ay Ciro</span></article>
-          <article><b id="nextServiceCount">0</b><span>Gelecek Servis KM</span></article>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p>İsim, firma veya plakaya göre hızlı takip</p>
         </div>
-        <div class="card">
-          <h2>Gelecek Servis KM Kayıtları</h2>
-          <div id="dueList" class="list"></div>
+        <div class="search-wrap">
+          <input id="globalSearch" type="search" placeholder="İsim, soyisim, firma adı veya plaka ara..." />
+          <div id="searchResults" class="search-results hidden"></div>
         </div>
-      </section>
+      </header>
 
-      <section id="vehicles" class="panel">
-        <div class="card">
-          <h2>Araç Kartı</h2>
-          <form id="vehicleForm" class="grid two">
-            <input id="vehicleId" type="hidden" />
-            <label>Plaka<input id="plate" required placeholder="34 ABC 123" /></label>
-            <label>Marka / Model<input id="model" placeholder="Toyota Corolla" /></label>
-            <label>Ruhsat Sahibi<input id="owner" placeholder="Ad Soyad" /></label>
-            <label>Telefon<input id="phone" inputmode="tel" placeholder="05xx xxx xx xx" /></label>
-            <label>Mevcut KM<input id="currentKm" type="number" min="0" placeholder="85000" /></label>
-            <label>Son Servis Tarihi<input id="lastServiceDate" type="date" /></label>
-            <label>Sonraki Bakım KM<input id="nextServiceKm" type="number" min="0" placeholder="95000" /></label>
-            <label>Not<textarea id="vehicleNote" rows="2"></textarea></label>
-            <div class="row-span actions"><button type="submit">Araç Kaydet</button><button type="button" id="clearVehicle" class="secondary">Temizle</button></div>
-          </form>
-        </div>
-        <div class="card">
-          <div class="section-title"><h2>Araç Listesi</h2><input id="vehicleSearch" placeholder="Plaka, model veya sahip ara" /></div>
-          <div id="vehicleList" class="list"></div>
-        </div>
-      </section>
+      <section id="dashboard" class="page active"></section>
+      <section id="customers" class="page"></section>
+      <section id="vehicles" class="page"></section>
+      <section id="services" class="page"></section>
+      <section id="payments" class="page"></section>
+      <section id="debts" class="page"></section>
+      <section id="reports" class="page"></section>
+      <section id="detail" class="page"></section>
+    </main>
+  </div>
 
-      <section id="service" class="panel">
-        <div class="card">
-          <h2>Servis Kaydı</h2>
-          <form id="serviceForm" class="grid two">
-            <input id="serviceId" type="hidden" />
-            <label>Plaka Ara<input id="servicePlateSearch" list="plateOptions" placeholder="Plaka yaz: MC 166" autocomplete="off" /></label>
-            <datalist id="plateOptions"></datalist>
-            <label>Araç Seç<select id="serviceVehicle" required></select></label>
-            <div id="selectedVehicleInfo" class="row-span empty">Servis kaydı için plaka yaz veya araç kartından Servis Aç butonuna bas.</div>
-            <label>Servise Geldiği KM<input id="serviceKm" type="number" min="0" required /></label>
-            <label>İşlem Tarihi<input id="serviceDate" type="date" required /></label>
-            <label>Açıklama<textarea id="serviceNote" rows="2" placeholder="Ek işlem / müşteri notu"></textarea></label>
+  <div class="fab-row">
+    <button id="addCustomerBtn" class="fab">+ Müşteri/Firma</button>
+    <button id="addVehicleBtn" class="fab secondary">+ Araç</button>
+    <button id="addServiceBtn" class="fab secondary">+ Servis</button>
+    <button id="addPaymentBtn" class="fab secondary">+ Tahsilat</button>
+  </div>
 
-            <fieldset class="row-span checks">
-              <legend>Parça / İşlem Durumu</legend>
-              <label>Yağ<select id="oil"><option value="değişmedi">Değişmedi</option><option value="değişti">Değişti</option></select></label>
-              <label>Yağ Filtresi<select id="oilFilter"><option value="değişmedi">Değişmedi</option><option value="değişti">Değişti</option></select></label>
-              <label>Hava Filtresi<select id="airFilter"><option value="değişmedi">Değişmedi</option><option value="değişti">Değişti</option></select></label>
-              <label>Polen Filtresi<select id="pollenFilter"><option value="değişmedi">Değişmedi</option><option value="değişti">Değişti</option></select></label>
-              <label>Fren Balatası<select id="brakePad"><option value="değişmedi">Değişmedi</option><option value="değişti">Değişti</option></select></label>
-              <label>Akü<select id="battery"><option value="değişmedi">Değişmedi</option><option value="değişti">Değişti</option></select></label>
-              <label>Lastik<select id="tire"><option value="değişmedi">Değişmedi</option><option value="değişti">Değişti</option></select></label>
-            </fieldset>
+  <dialog id="modal">
+    <form method="dialog" id="modalForm">
+      <h3 id="modalTitle">Kayıt</h3>
+      <div id="modalFields"></div>
+      <menu>
+        <button value="cancel" class="ghost">Vazgeç</button>
+        <button id="saveModal" value="default" class="primary">Kaydet</button>
+      </menu>
+    </form>
+  </dialog>
 
-            <label>İşçilik Ücreti<input id="laborCost" type="number" min="0" step="0.01" /></label>
-            <label>Parça Ücreti<input id="partsCost" type="number" min="0" step="0.01" /></label>
-            <div class="row-span actions"><button type="submit">Servis Kaydet</button><button type="button" id="clearService" class="secondary">Temizle</button></div>
-          </form>
-        </div>
-      </section>
-
-      <section id="history" class="panel">
-        <div id="vehicleDetail" class="card hidden"></div>
-        <div class="card">
-          <div class="section-title"><h2>Araç Geçmişi</h2><input id="historySearch" placeholder="Plaka, işlem, açıklama ara" /></div>
-          <div id="historyList" class="list"></div>
-        </div>
-      </section>
-
-      <section id="accounts" class="panel">
-        <div class="card">
-          <h2>Müşteri Cari Hesap</h2>
-          <p class="muted">Servis ücretleri müşterinin borcuna eklenir. Ödeme alındığında bakiyeden düşer. Manuel borç/indirim de ekleyebilirsin.</p>
-          <div class="section-title"><h2>Cari Liste</h2><input id="accountSearch" placeholder="Müşteri, telefon veya plaka ara" /></div>
-          <div id="accountList" class="list"></div>
-        </div>
-        <div class="card">
-          <div class="section-title"><h2>Plakaya Özel Cari Geçmiş</h2><input id="plateAccountSearch" list="plateOptions" placeholder="Plaka yaz: MC 166" autocomplete="off" /></div>
-          <div id="plateAccountDetail" class="list"><div class="empty">Plaka yazınca o araca ait servis ücretleri, ödemeler ve kalan bakiye burada görünür.</div></div>
-        </div>
-        <div class="card">
-          <h2>Ödeme / Cari İşlem</h2>
-          <form id="paymentForm" class="grid two">
-            <input id="paymentCustomerKey" type="hidden" />
-            <label>Müşteri<input id="paymentOwner" required placeholder="Ruhsat sahibi" /></label>
-            <label>Telefon<input id="paymentPhone" inputmode="tel" placeholder="05xx xxx xx xx" /></label>
-            <label>İşlem Türü<select id="paymentType"><option value="payment">Ödeme Alındı</option><option value="debt">Borç Ekle</option><option value="discount">İndirim / Düşüm</option></select></label>
-            <label>Tutar<input id="paymentAmount" type="number" min="0" step="0.01" required /></label>
-            <label>İşlem Tarihi<input id="paymentDate" type="date" required /></label>
-            <label>Açıklama<textarea id="paymentNote" rows="2" placeholder="Nakit ödeme, havale, ek borç vb."></textarea></label>
-            <div class="row-span actions"><button type="submit">Cari İşlemi Kaydet</button><button type="button" id="clearPayment" class="secondary">Temizle</button></div>
-          </form>
-        </div>
-        <div class="card">
-          <h2>Cari Hareketler</h2>
-          <div id="paymentHistory" class="list"></div>
-        </div>
-      </section>
-
-      <section id="backup" class="panel">
-        <div class="card">
-          <h2>Yedek Al / Geri Yükle</h2>
-          <p class="muted">Firebase verileri ortak tutulur. Bu bölüm ekstra JSON yedek içindir.</p>
-          <div class="actions"><button id="exportBtn">Yedek Al</button><label class="fileBtn">Yedek Yükle<input id="importFile" type="file" accept="application/json" hidden /></label></div>
-        </div>
-      </section>
-    </section>
-  </main>
-
-  <script type="module" src="app.js?v=5"></script>
+  <script src="app.js"></script>
 </body>
 </html>
