@@ -96,3 +96,19 @@ Son eklenen özellikler:
 
 Servis işlem seçenekleri:
 Motor Yağı, Yağ Filtresi, Hava Filtresi, Polen Filtresi, Yakıt / Mazot Filtresi, Ön Balata, Arka Balata, Fren Diski, Fren Hidroliği, Antifriz, Akü, Buji, Triger Seti, Debriyaj, Şanzıman Yağı, Rot Balans, Lastik, Klima Gazı, Genel Kontrol, Elektrik Arıza, Kaporta / Boya, Diğer.
+
+
+## V7 Final Araç Ekleme Güncellemesi
+
+Araç ekleme kısmında artık müşteri/firma açılır listeden seçilmez.
+
+Yeni mantık:
+- Müşteri / Firma Adı elle yazılır.
+- Telefon isteğe bağlı yazılır.
+- Müşteri/firma sistemde varsa araç ona bağlanır.
+- Müşteri/firma sistemde yoksa otomatik yeni müşteri/firma kartı oluşturulur.
+- Plaka isteğe bağlıdır.
+- Plakası olmayan araçlar için “Plakasız Araç Tanımı” alanı eklendi.
+- Örnek: Forklift, Römork, Atölye Aracı, Test Aracı.
+- Plaka boş bırakılırsa sistem otomatik PLakasız kayıt numarası üretir.
+- Servis kaydında plaka/tanım yazılarak da kayıtlı araca ulaşılabilir.

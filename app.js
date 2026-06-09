@@ -91,13 +91,25 @@ function safe(v){ return (v ?? "").toString(); }
 function norm(v){ return safe(v).toLocaleLowerCase("tr-TR").replace(/\s+/g," ").trim(); }
 
 function getCustomer(id){ return db.customers.find(x=>x.id===id); }
+function findCustomerByName(name){
+  const target = norm(name);
+  return db.customers.find(c => norm(c.name) === target);
+}
+function findOrCreateCustomerByName(name, phone=""){
+  let found = findCustomerByName(name);
+  if(found) return found;
+  const created = { id:newId("c"), name:safe(name).trim(), phone:phone || "", type:"Şahıs/Firma", note:"Araç ekleme sırasında otomatik oluşturuldu" };
+  db.customers.push(created);
+  return created;
+}
 function getVehicle(id){ return db.vehicles.find(x=>x.id===id); }
 function normalizePlate(plate){
   return safe(plate).toLocaleUpperCase("tr-TR").replace(/\s+/g,"").trim();
 }
 function findVehicleByPlate(plate){
   const target = normalizePlate(plate);
-  return db.vehicles.find(v => normalizePlate(v.plate) === target);
+  if(!target) return null;
+  return db.vehicles.find(v => normalizePlate(v.plate) === target || normalizePlate(v.noPlateName) === target);
 }
 function getVehiclesByCustomer(customerId){ return db.vehicles.filter(x=>x.customerId===customerId); }
 function getServicesByVehicle(vehicleId){ return db.services.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
@@ -253,7 +265,7 @@ function customersTable(list){
 }
 function vehiclesTable(list){
   return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(v=>`<tr><td><b>${v.plate}</b></td><td>${getCustomer(v.customerId)?.name || "-"}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td><td>${lastServiceDate(v.id)}</td><td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td><td>${v.note || "-"}</td><td><button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button></td></tr>`).join("") || emptyRow(7)}
+  ${list.map(v=>`<tr><td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td><td>${getCustomer(v.customerId)?.name || "-"}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td><td>${lastServiceDate(v.id)}</td><td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td><td>${v.note || "-"}</td><td><button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button></td></tr>`).join("") || emptyRow(7)}
   </tbody></table></div>`;
 }
 function servicesTable(list){
@@ -298,14 +310,14 @@ window.openVehicle = function(vehicleId){
   const c = getCustomer(v.customerId);
   document.getElementById("detail").innerHTML = `
     <div class="detail-title">
-      <div><span class="badge">Araç Kartı / Plaka Geçmişi</span><h2>${v.plate}</h2><p>${c?.name || "-"} • ${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</p></div>
+      <div><span class="badge">Araç Kartı / Plaka Geçmişi</span><h2>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</h2><p>${c?.name || "-"} • ${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn primary" onclick="openCustomer('${v.customerId}')">Bu müşterinin tüm araçlarını göster</button>
         <button class="btn" onclick="openPage('${lastPageBeforeDetail}')">Geri</button>
       </div>
     </div>
     <div class="customer-card">
-      <div class="info-box"><span>Plaka</span><b>${v.plate}</b></div><div class="info-box"><span>Sahibi / Firma</span><b>${c?.name || "-"}</b></div><div class="info-box"><span>Marka model</span><b>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</b></div>
+      <div class="info-box"><span>Plaka / Tanım</span><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></div><div class="info-box"><span>Sahibi / Firma</span><b>${c?.name || "-"}</b></div><div class="info-box"><span>Marka model</span><b>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</b></div>
       <div class="info-box"><span>Son KM</span><b>${kmFormat(vehicleLastKm(v.id))}</b></div><div class="info-box"><span>Bir Sonraki Bakım KM</span><b>${kmFormat(vehicleNextKm(v.id))}</b></div><div class="info-box"><span>Kalan KM</span><b class="${remainingKm(v.id) !== null && remainingKm(v.id) <= 1000 ? "bad" : "warn"}">${remainingKm(v.id) === null ? "-" : kmFormat(remainingKm(v.id))}</b></div>
       <div class="info-box"><span>Toplam borç</span><b class="${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</b></div><div class="info-box"><span>Toplam işlem</span><b>${money(vehicleTotal(v.id))}</b></div><div class="info-box"><span>Toplam tahsilat</span><b class="good">${money(vehiclePaid(v.id))}</b></div>
     </div>
@@ -325,7 +337,7 @@ searchInput.addEventListener("input", function(){
   const customerMatches = db.customers.filter(c => norm(`${c.name} ${c.phone} ${c.type} ${c.note}`).includes(q));
   const vehicleMatches = db.vehicles.filter(v => {
     const c = getCustomer(v.customerId);
-    return norm(`${v.plate} ${v.brand} ${v.model} ${v.year} ${v.note} ${c?.name} ${c?.phone}`).includes(q);
+    return norm(`${v.plate} ${v.noPlateName} ${v.brand} ${v.model} ${v.year} ${v.note} ${c?.name} ${c?.phone}`).includes(q);
   });
 
   let html = "";
@@ -340,7 +352,7 @@ searchInput.addEventListener("input", function(){
     html += `<div class="search-title">Plaka Sonuçları</div>`;
     html += vehicleMatches.map(v=>{
       const c = getCustomer(v.customerId);
-      return `<div class="search-row" onclick="openVehicle('${v.id}')"><b>🚗 ${v.plate}</b><span>${c?.name || "-"} • direkt araç geçmişi açılır</span></div>`;
+      return `<div class="search-row" onclick="openVehicle('${v.id}')"><b>🚗 ${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b><span>${c?.name || "-"} • direkt araç geçmişi açılır</span></div>`;
     }).join("");
   }
   if(!html) html = `<div class="search-row"><b>Sonuç bulunamadı</b><span>İsim, firma adı veya plakayı farklı yazmayı deneyin.</span></div>`;
@@ -380,7 +392,7 @@ window.openModal = function(type){
     document.getElementById("modalBody").innerHTML = `${field("Ad Soyad / Firma Adı","name")}${field("Telefon","phone","text","",false)}${selectField("Tür","type","<option>Şahıs</option><option>Firma</option>")}${textareaField("Not","note")}`;
   }
   if(type === "vehicle"){
-    document.getElementById("modalBody").innerHTML = `${selectField("Sahibi / Firma","customerId",customerOptions)}${field("Plaka","plate")}${field("Marka","brand","text","",false)}${field("Model","model","text","",false)}${field("Yıl","year","number","",false)}${textareaField("Araç Notu","note")}`;
+    document.getElementById("modalBody").innerHTML = `${field("Müşteri / Firma Adı","customerName","text","")}${field("Telefon","customerPhone","text","",false)}${field("Plaka","plate","text","",false)}${field("Plakasız Araç Tanımı","noPlateName","text","",false)}${field("Marka","brand","text","",false)}${field("Model","model","text","",false)}${field("Yıl","year","number","",false)}${textareaField("Araç Notu","note")}<p class="notice">Plaka varsa yaz. Plakası olmayan araçlarda Plakasız Araç Tanımı alanına örnek olarak “Forklift”, “Römork”, “Atölye Aracı” yazabilirsin. Müşteri/firma sistemde yoksa otomatik oluşturulur.</p>`;
   }
   if(type === "service"){
     document.getElementById("modalBody").innerHTML = `${field("Plaka Yaz","plate","text","")}${field("Servis Tarihi","date","date",today())}${field("Geldiği KM","currentKm","number")}${field("Bir Sonraki Bakım KM","nextKm","number","",false)}${serviceItemCheckboxes()}${field("Ek İşlem Başlığı / Açıklama","title","text","",false)}${field("İşçilik Tutarı","laborAmount","number","0",false)}${field("Parça Tutarı","partsAmount","number","0",false)}<div class="field"><label>Toplam Tutar</label><input id="serviceTotalPreview" type="text" value="0 TL" readonly></div>${textareaField("Not","note")}<p class="notice">Plaka kayıtlı araçlarda varsa servis otomatik o müşteri/firma altına işlenir. Toplam tutar işçilik + parça olarak otomatik hesaplanır.</p>`;
@@ -412,7 +424,12 @@ modalForm.addEventListener("submit", function(e){
   const obj = Object.fromEntries(fd.entries());
 
   if(modalType === "customer") db.customers.push({ id:newId("c"), name:obj.name, phone:obj.phone, type:obj.type, note:obj.note });
-  if(modalType === "vehicle") db.vehicles.push({ id:newId("v"), customerId:obj.customerId, plate:safe(obj.plate).toLocaleUpperCase("tr-TR"), brand:obj.brand, model:obj.model, year:obj.year, note:obj.note });
+  if(modalType === "vehicle"){
+    const c = findOrCreateCustomerByName(obj.customerName, obj.customerPhone);
+    const plateText = safe(obj.plate).trim() ? safe(obj.plate).toLocaleUpperCase("tr-TR") : `PLAKASIZ-${new Date().getTime().toString().slice(-5)}`;
+    const noPlateName = safe(obj.noPlateName).trim();
+    db.vehicles.push({ id:newId("v"), customerId:c.id, plate:plateText, noPlateName:noPlateName, brand:obj.brand, model:obj.model, year:obj.year, note:obj.note });
+  }
   if(modalType === "service"){
     const foundVehicle = findVehicleByPlate(obj.plate);
     if(!foundVehicle){
