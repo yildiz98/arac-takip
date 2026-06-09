@@ -169,72 +169,24 @@ function findServiceTarget(query){
 }
 function getVehiclesByCustomer(customerId){ return db.vehicles.filter(x=>x.customerId===customerId); }
 function getServicesByVehicle(vehicleId){ return db.services.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
-function getPaymentsByVehicle(vehicleId){
-  return db.payments.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date)));
+function getPaymentsByVehicle(vehicleId){ return db.payments.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
+function vehicleTotal(vehicleId){ return getServicesByVehicle(vehicleId).reduce((t,x)=>t+Number(x.amount||0),0); }
+function vehiclePaid(vehicleId){ return getPaymentsByVehicle(vehicleId).reduce((t,x)=>t+Number(x.amount||0),0); }
+function vehicleDebt(vehicleId){ return vehicleTotal(vehicleId)-vehiclePaid(vehicleId); }
+function customerTotal(customerId){ return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehicleTotal(v.id),0); }
+function customerPaid(customerId){ return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehiclePaid(v.id),0); }
+function customerDebt(customerId){ return customerTotal(customerId)-customerPaid(customerId); }
+function lastServiceDate(vehicleId){ return getServicesByVehicle(vehicleId)[0]?.date || "-"; }
+function lastServiceRecord(vehicleId){ return getServicesByVehicle(vehicleId)[0] || null; }
+function vehicleLastKm(vehicleId){ return Number(lastServiceRecord(vehicleId)?.currentKm || 0); }
+function vehicleNextKm(vehicleId){ return Number(lastServiceRecord(vehicleId)?.nextKm || 0); }
+function kmFormat(n){ return Number(n||0) ? Number(n).toLocaleString("tr-TR") + " km" : "-"; }
+function remainingKm(vehicleId){
+  const next = vehicleNextKm(vehicleId);
+  const current = vehicleLastKm(vehicleId);
+  if(!next || !current) return null;
+  return next - current;
 }
-
-// V7 Final Kurumsal hesaplama fonksiyonları
-function vehicleTotal(vehicleId){
-  return db.services
-    .filter(s => s.vehicleId === vehicleId)
-    .reduce((total, service) => total + Number(service.amount || 0), 0);
-}
-
-function vehiclePaid(vehicleId){
-  return db.payments
-    .filter(payment => payment.vehicleId === vehicleId)
-    .reduce((total, payment) => total + Number(payment.amount || 0), 0);
-}
-
-function vehicleDebt(vehicleId){
-  return vehicleTotal(vehicleId) - vehiclePaid(vehicleId);
-}
-
-function customerTotal(customerId){
-  const vehicleIds = db.vehicles
-    .filter(vehicle => vehicle.customerId === customerId)
-    .map(vehicle => vehicle.id);
-
-  return db.services
-    .filter(service => vehicleIds.includes(service.vehicleId))
-    .reduce((total, service) => total + Number(service.amount || 0), 0);
-}
-
-function customerPaid(customerId){
-  return db.payments
-    .filter(payment => payment.customerId === customerId)
-    .reduce((total, payment) => total + Number(payment.amount || 0), 0);
-}
-
-function customerDebt(customerId){
-  return customerTotal(customerId) - customerPaid(customerId);
-}
-
-function paymentTypeText(payment){
-  if(payment.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
-  if(payment.paymentType === "customer_only") return "Sadece Cari Hesap";
-  return payment.vehicleId ? "Araç + Cari Hesap" : "Sadece Cari Hesap";
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 const pages = {
   dashboard:"Dashboard",
@@ -426,15 +378,6 @@ function stat(label,value,cls=""){
   return `<div class="card"><div class="label">${label}</div><div class="value ${cls}">${value}</div></div>`;
 }
 
-
-window.vehicleTotal = vehicleTotal;
-window.vehiclePaid = vehiclePaid;
-window.vehicleDebt = vehicleDebt;
-window.customerTotal = customerTotal;
-window.customerPaid = customerPaid;
-window.customerDebt = customerDebt;
-window.paymentTypeText = paymentTypeText;
-
 function render(){
   renderDashboard(); renderCustomers(); renderVehicles(); renderServices(); renderPayments(); renderDebts(); renderReports(); renderSettings();
 }
@@ -504,7 +447,7 @@ window.filterServices = function(){
   document.getElementById("serviceList").innerHTML = servicesTable(list);
 }
 function renderPayments(){
-  document.getElementById("payments").innerHTML = `<div class="panel"><div class="panel-head"><h3>Elle Tahsilat Takibi</h3><button class="small-btn" onclick="openModal('payment')">+ Yeni</button></div>
+  document.getElementById("payments").innerHTML = `<div class="panel"><div class="panel-head"><h3>Günlük Tahsilat Takibi</h3><button class="small-btn" onclick="openModal('payment')">+ Yeni</button></div>
     <div class="grid three">${stat("Bugünkü Tahsilat", money(db.payments.filter(p=>p.date===today()).reduce((t,p)=>t+Number(p.amount||0),0)), "good")}${stat("Toplam Tahsilat", money(db.payments.reduce((t,p)=>t+Number(p.amount||0),0)), "good")}${stat("Tahsilat Kaydı", db.payments.length)}</div><br>
     ${paymentsTable(db.payments.slice().sort((a,b)=>safe(b.date).localeCompare(safe(a.date))))}</div>`;
 }
@@ -582,21 +525,8 @@ function servicesTable(list){
   </tbody></table></div>`;
 }
 function paymentsTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Ödeme Tarihi</th><th>Şahıs/Firma</th><th>Plaka</th><th>Tahsilat Türü</th><th>Tutar</th><th>Notlar</th><th>İşlemi Yapan</th></tr></thead><tbody>
-  ${list.map(p=>{
-    const v = getVehicle(p.vehicleId);
-    const c = getCustomer(p.customerId);
-    const plateText = v ? (v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate) : (p.manualPlate || "-");
-    return `<tr>
-      <td>${p.date || "-"}</td>
-      <td>${c?.name || "-"}</td>
-      <td>${plateText}</td>
-      <td><span class="badge">${paymentTypeText(p)}</span></td>
-      <td class="amount good">${money(p.amount)}</td>
-      <td>${p.note || "-"}</td>
-      <td>${p.createdBy || "-"}</td>
-    </tr>`;
-  }).join("") || emptyRow(7)}
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Müşteri/Firma</th><th>Plaka</th><th>Tutar</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
+  ${list.map(p=>{const v=getVehicle(p.vehicleId); const c=getCustomer(p.customerId); return `<tr><td>${p.date || "-"}</td><td>${c?.name || "-"}</td><td>${v?.plate || "-"}</td><td class="amount good">${money(p.amount)}</td><td>${p.note || "-"}</td></tr>`}).join("") || emptyRow(5)}
   </tbody></table></div>`;
 }
 function customerDebtTable(onlyDebt){
@@ -979,7 +909,7 @@ window.openModal = function(type){
     setTimeout(() => { bindServiceTotalPreview(); bindServiceTargetFinder(); }, 0);
   }
   if(type === "payment"){
-    document.getElementById("modalBody").innerHTML = `${field("Şahıs / Firma Adı","customerName","text","")}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka varsa ödeme araç + cari hesaptan düşer. Plaka boşsa sadece şahıs/firma cari hesabından düşer.</p>`;
+    document.getElementById("modalBody").innerHTML = `${selectField("Plaka","vehicleId",vehicleOptions)}${field("Tahsilat Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}`;
   }
   modal.showModal();
 };
@@ -1062,38 +992,8 @@ modalForm.addEventListener("submit", function(e){
     db.services.push({ id:newId("s"), vehicleId:foundVehicle.id, date:obj.date, currentKm:currentKm, nextKm:Number(obj.nextKm || 0), items:selectedItems, title:obj.title, laborAmount:laborAmount, partsAmount:partsAmount, amount:totalAmount, note:obj.note, createdBy:activeUser?.email || "-", createdByRole:activeUser?.role || "-", createdAt:new Date().toISOString() });
   }
   if(modalType === "payment"){
-    const typedCustomerName = safe(obj.customerName).trim();
-    const typedPlate = safe(obj.plate).trim();
-
-    let foundVehicle = typedPlate ? findVehicleByPlate(typedPlate) : null;
-    let c = null;
-
-    // Plaka varsa: araç sahibini bul, ödeme araç + cari hesaptan düşsün.
-    if(foundVehicle){
-      c = getCustomer(foundVehicle.customerId);
-    }
-
-    // Plaka yoksa veya plaka kayıtlı değilse: yazılan şahıs/firma adına cari ödeme kaydı.
-    if(!c){
-      if(!typedCustomerName){
-        alert("Plaka kayıtlı değilse Şahıs/Firma Adı yazman gerekir.");
-        return;
-      }
-      c = findOrCreateCustomerByName(typedCustomerName, "");
-    }
-
-    db.payments.push({
-      id:newId("p"),
-      customerId:c.id,
-      vehicleId:foundVehicle ? foundVehicle.id : "",
-      manualPlate:typedPlate ? typedPlate.toLocaleUpperCase("tr-TR") : "",
-      paymentType:foundVehicle ? "vehicle_customer" : "customer_only",
-      date:obj.date,
-      amount:Number(obj.amount||0),
-      note:obj.note,
-      createdBy:activeUser?.email || "-",
-      createdAt:new Date().toISOString()
-    });
+    const v = getVehicle(obj.vehicleId);
+    db.payments.push({ id:newId("p"), customerId:v?.customerId, vehicleId:obj.vehicleId, date:obj.date, amount:Number(obj.amount||0), note:obj.note });
   }
 
   modal.close();
