@@ -79,3 +79,22 @@ Firebase Console'da:
 - Authentication > Sign-in method > Email/Password aktif olmalı.
 - Authentication > Settings > Authorized domains içinde `yildiz98.github.io` olmalı.
 - Authentication > Users kısmında admin/personel kullanıcıları oluşturulmuş olmalı.
+
+
+## Tahsilat Elle Giriş Güncellemesi
+
+Bu sürümde tahsilat ekleme artık açılır araç seçimi ile yapılmaz.
+
+Tahsilat alanları:
+- Şahıs / Firma Adı
+- Plaka
+- Ödeme Tarihi
+- Tutar
+- Notlar
+
+Çalışma mantığı:
+- Şahıs/firma sistemde varsa ona işlenir.
+- Şahıs/firma sistemde yoksa otomatik yeni müşteri/firma kartı oluşturulur.
+- Plaka kayıtlıysa ödeme plaka borcundan da düşer.
+- Plaka kayıtlı değilse ödeme müşteri/firma genel tahsilatı olarak kaydedilir.
+- Tahsilatı yapan kullanıcı kaydı tutulur.

@@ -1,0 +1,17 @@
+Hiçkorkmaz Garage V7 - Tahsilat Elle Giriş Güncellemesi
+
+Eklenen:
+- Tahsilat kısmında seçim kalktı.
+- Şahıs/Firma Adı elle yazılır.
+- Plaka elle yazılır.
+- Ödeme tarihi, tutar ve notlar girilir.
+- Firma/şahıs yoksa otomatik oluşturulur.
+- Plaka kayıtlıysa plaka borcuna bağlanır.
+- Plaka kayıtlı değilse müşteri/firma tahsilatı olarak kaydedilir.
+
+Yükleme:
+1. ZIP'i indir.
+2. ZIP'i aç.
+3. Dosyaları GitHub Pages yayın branch'ine yükle.
+4. Commit changes de.
+5. Siteyi Ctrl + F5 ile yenile.
