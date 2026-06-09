@@ -173,37 +173,63 @@ function getPaymentsByVehicle(vehicleId){
   return db.payments.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date)));
 }
 
+// V7 Final Kurumsal hesaplama fonksiyonları
 function vehicleTotal(vehicleId){
-  return getServicesByVehicle(vehicleId).reduce((t,s)=>t+Number(s.amount||0),0);
+  return db.services
+    .filter(s => s.vehicleId === vehicleId)
+    .reduce((total, service) => total + Number(service.amount || 0), 0);
 }
 
 function vehiclePaid(vehicleId){
-  return getPaymentsByVehicle(vehicleId).reduce((t,p)=>t+Number(p.amount||0),0);
+  return db.payments
+    .filter(payment => payment.vehicleId === vehicleId)
+    .reduce((total, payment) => total + Number(payment.amount || 0), 0);
 }
 
 function vehicleDebt(vehicleId){
-  return vehicleTotal(vehicleId)-vehiclePaid(vehicleId);
+  return vehicleTotal(vehicleId) - vehiclePaid(vehicleId);
 }
 
 function customerTotal(customerId){
-  return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehicleTotal(v.id),0);
+  const vehicleIds = db.vehicles
+    .filter(vehicle => vehicle.customerId === customerId)
+    .map(vehicle => vehicle.id);
+
+  return db.services
+    .filter(service => vehicleIds.includes(service.vehicleId))
+    .reduce((total, service) => total + Number(service.amount || 0), 0);
 }
 
 function customerPaid(customerId){
   return db.payments
-    .filter(p => p.customerId === customerId)
-    .reduce((t,p)=>t+Number(p.amount||0),0);
+    .filter(payment => payment.customerId === customerId)
+    .reduce((total, payment) => total + Number(payment.amount || 0), 0);
 }
 
 function customerDebt(customerId){
-  return customerTotal(customerId)-customerPaid(customerId);
+  return customerTotal(customerId) - customerPaid(customerId);
 }
 
-function paymentTypeText(p){
-  if(p.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
-  if(p.paymentType === "customer_only") return "Sadece Cari Hesap";
-  return p.vehicleId ? "Araç + Cari Hesap" : "Sadece Cari Hesap";
+function paymentTypeText(payment){
+  if(payment.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
+  if(payment.paymentType === "customer_only") return "Sadece Cari Hesap";
+  return payment.vehicleId ? "Araç + Cari Hesap" : "Sadece Cari Hesap";
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -399,6 +425,15 @@ if(activeUser) render();
 function stat(label,value,cls=""){
   return `<div class="card"><div class="label">${label}</div><div class="value ${cls}">${value}</div></div>`;
 }
+
+
+window.vehicleTotal = vehicleTotal;
+window.vehiclePaid = vehiclePaid;
+window.vehicleDebt = vehicleDebt;
+window.customerTotal = customerTotal;
+window.customerPaid = customerPaid;
+window.customerDebt = customerDebt;
+window.paymentTypeText = paymentTypeText;
 
 function render(){
   renderDashboard(); renderCustomers(); renderVehicles(); renderServices(); renderPayments(); renderDebts(); renderReports(); renderSettings();
