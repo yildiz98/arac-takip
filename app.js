@@ -1179,8 +1179,7 @@ window.findCariDebug = function(name){
     payments:db.payments.filter(p=>p.customerId===c.id)
   };
 };
-window.clearDemo = function(){
-  window.deleteVehicle = function(vehicleId){
+window.deleteVehicle = function(vehicleId){
   if(!requireAdmin()) return;
 
   const password = prompt("Silme şifresini giriniz:");
@@ -1200,3 +1199,17 @@ window.clearDemo = function(){
   persist();
   alert("Araç silindi.");
 };
+
+window.clearDemo = function(){
+  if(!requireAdmin()) return;
+  db.customers = db.customers.filter(x=>!x.id.includes("_demo_"));
+  db.vehicles = db.vehicles.filter(x=>!x.id.includes("_demo_"));
+  db.services = db.services.filter(x=>!x.id.includes("_demo_"));
+  db.payments = db.payments.filter(x=>!x.id.includes("_demo_"));
+  persist();
+};
+
+setupAuth();
+setupMobileMenu();
+applyAuthState();
+if(activeUser) render();
