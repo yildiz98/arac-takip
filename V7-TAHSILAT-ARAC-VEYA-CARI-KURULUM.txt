@@ -1,0 +1,17 @@
+V7 Tahsilat Araç veya Cari Ayrı Mantık
+
+Mantık:
+1. Plaka kayıtlıysa:
+   Sadece araç borcundan düşer.
+
+2. Plaka yoksa, şahıs/firma adı varsa:
+   Sadece cari hesaptan düşer.
+
+3. Plaka kayıtlı değilse:
+   Şahıs/firma adı zorunludur ve cari tahsilat olarak kaydedilir.
+
+Yükleme:
+1. ZIP'i indir.
+2. GitHub Pages yayın branch'ine yükle.
+3. Commit changes de.
+4. Ctrl + F5 yap.

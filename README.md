@@ -89,3 +89,19 @@ Sistemi bozmadan sadece tahsilat mantığı güncellendi:
 - Plaka boşsa: ödeme sadece şahıs/firma cari hesabından düşer.
 - Plaka kayıtlı değilse: şahıs/firma adı zorunludur ve ödeme sadece cari hesap tahsilatı olur.
 - Tahsilat tablosuna ödeme türü eklendi.
+
+
+## Tahsilat Araç veya Cari Ayrı Mantık
+
+Bu sürümde tahsilat mantığı ayrıldı:
+
+- Plaka yazılır ve plaka sistemde kayıtlıysa:
+  - Ödeme sadece o aracın borcuna işlenir.
+  - Tahsilat türü: Sadece Araç
+
+- Plaka boş bırakılır ve şahıs/firma adı yazılırsa:
+  - Ödeme sadece şahıs/firma cari hesabına işlenir.
+  - Tahsilat türü: Sadece Cari Hesap
+
+- Plaka yazılır ama sistemde kayıtlı değilse:
+  - Şahıs/firma adı varsa cari hesap tahsilatı olarak kaydedilir.

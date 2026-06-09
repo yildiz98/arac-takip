@@ -189,9 +189,10 @@ function remainingKm(vehicleId){
 }
 
 function paymentTypeText(p){
-  if(p.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
+  if(p.paymentType === "vehicle_only") return "Sadece Araç";
   if(p.paymentType === "customer_only") return "Sadece Cari Hesap";
-  return p.vehicleId ? "Araç + Cari Hesap" : "Sadece Cari Hesap";
+  if(p.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
+  return p.vehicleId ? "Sadece Araç" : "Sadece Cari Hesap";
 }
 
 
@@ -929,7 +930,7 @@ window.openModal = function(type){
     setTimeout(() => { bindServiceTotalPreview(); bindServiceTargetFinder(); }, 0);
   }
   if(type === "payment"){
-    document.getElementById("modalBody").innerHTML = `${field("Şahıs / Firma Adı","customerName","text","",false)}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka kayıtlıysa ödeme araç + cari hesaptan düşer. Plaka boşsa sadece şahıs/firma cari hesabından düşer.</p>`;
+    document.getElementById("modalBody").innerHTML = `${field("Şahıs / Firma Adı","customerName","text","",false)}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka yazılırsa ödeme sadece o aracın borcuna işlenir. Plaka boşsa ve şahıs/firma adı yazılırsa ödeme sadece cari hesaba işlenir.</p>`;
   }
   modal.showModal();
 };
@@ -1017,17 +1018,20 @@ modalForm.addEventListener("submit", function(e){
     const foundVehicle = typedPlate ? findVehicleByPlate(typedPlate) : null;
 
     let targetCustomer = null;
+    let paymentType = "customer_only";
 
     if(foundVehicle){
-      // Plaka varsa: araç + cari hesap
+      // Plaka kayıtlıysa: sadece araç tahsilatı
       targetCustomer = getCustomer(foundVehicle.customerId);
+      paymentType = "vehicle_only";
     }else{
-      // Plaka yoksa veya plaka kayıtlı değilse: sadece cari hesap
+      // Plaka yoksa veya plaka kayıtlı değilse: şahıs/firma cari hesabı
       if(!typedCustomerName){
         alert("Plaka kayıtlı değilse veya plaka boşsa Şahıs/Firma Adı yazman gerekir.");
         return;
       }
       targetCustomer = findOrCreateCustomerByName(typedCustomerName, "");
+      paymentType = "customer_only";
     }
 
     db.payments.push({
@@ -1035,7 +1039,7 @@ modalForm.addEventListener("submit", function(e){
       customerId:targetCustomer.id,
       vehicleId:foundVehicle ? foundVehicle.id : "",
       manualPlate:typedPlate ? typedPlate.toLocaleUpperCase("tr-TR") : "",
-      paymentType:foundVehicle ? "vehicle_customer" : "customer_only",
+      paymentType:paymentType,
       date:obj.date,
       amount:Number(obj.amount||0),
       note:obj.note,
