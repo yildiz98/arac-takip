@@ -126,3 +126,10 @@ dialog::backdrop{background:rgba(0,0,0,.72)}#modalForm{padding:22px}
   background:rgba(56,189,248,.08);
   font-weight:900;
 }
+
+@media print{
+  .sidebar,.header,.quick-actions,.btn,.small-btn{display:none!important}
+  .content{padding:0!important}
+  body{background:#fff!important;color:#000!important}
+  .panel,.card,.info-box{box-shadow:none!important;border-color:#bbb!important}
+}

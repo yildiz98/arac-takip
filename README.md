@@ -129,3 +129,16 @@ Yeni mantık:
 - Yazılan değer müşteri/firma adıysa o müşterinin araçları kontrol edilir.
 - Müşteri/firma adına bağlı tek araç varsa otomatik o araca kaydeder.
 - Birden fazla araç varsa servis formunda seçim alanı açılır ve doğru araç seçilir.
+
+
+## V7 Servis Geçmişi Yazdır / PDF / WhatsApp Güncellemesi
+
+Eklenen özellikler:
+- Araç detayında servis geçmişi için Yazdır butonu.
+- Araç detayında PDF butonu.
+- Araç detayında WhatsApp paylaş butonu.
+- Araç listesinde hızlı Yazdır ve WP butonları.
+- Servis geçmişi çıktısında yapılan işlemler, geldiği KM, sonraki bakım KM, işçilik, parça, toplam ve notlar görünür.
+
+PDF Notu:
+Tarayıcı yazdır penceresi açılır. Hedef olarak “PDF olarak kaydet” seçilerek PDF alınır.

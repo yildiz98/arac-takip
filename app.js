@@ -301,16 +301,20 @@ function customersTable(list){
 }
 function vehiclesTable(list){
   return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(v=>`<tr><td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td><td>${getCustomer(v.customerId)?.name || "-"}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td><td>${lastServiceDate(v.id)}</td><td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td><td>${v.note || "-"}</td><td><button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button></td></tr>`).join("") || emptyRow(7)}
+  ${list.map(v=>`<tr><td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td><td>${getCustomer(v.customerId)?.name || "-"}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td><td>${lastServiceDate(v.id)}</td><td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td><td>${v.note || "-"}</td><td>
+      <button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button>
+      <button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
+      <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>
+    </td></tr>`).join("") || emptyRow(7)}
   </tbody></table></div>`;
 }
 function servicesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th></tr></thead><tbody>
-  ${list.map(s=>{const v=getVehicle(s.vehicleId); const c=getCustomer(v?.customerId); return `<tr><td>${s.date || "-"}</td><td>${v ? `<button class="small-btn" onclick="openVehicle('${v.id}')">${v.plate}</button>` : "-"}</td><td>${c?.name || "-"}</td><td>${kmFormat(s.currentKm)}</td><td>${kmFormat(s.nextKm)}</td><td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td><td class="amount">${money(s.laborAmount || 0)}</td><td class="amount">${money(s.partsAmount || 0)}</td><td class="amount">${money(s.amount)}</td><td>${s.note || "-"}</td></tr>`}).join("") || emptyRow(10)}
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
+  ${list.map(s=>{const v=getVehicle(s.vehicleId); const c=getCustomer(v?.customerId); return `<tr><td>${s.date || "-"}</td><td>${v ? `<button class="small-btn" onclick="openVehicle('${v.id}')">${v.plate}</button>` : "-"}</td><td>${c?.name || "-"}</td><td>${kmFormat(s.currentKm)}</td><td>${kmFormat(s.nextKm)}</td><td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td><td class="amount">${money(s.laborAmount || 0)}</td><td class="amount">${money(s.partsAmount || 0)}</td><td class="amount">${money(s.amount)}</td><td>${s.note || "-"}</td><td>${v ? `<button class="small-btn" onclick="printServiceHistory(\'${v.id}\')">Yazdır</button> <button class="small-btn" onclick="shareServiceHistoryWhatsApp(\'${v.id}\')">WP</button>` : "-"}</td></tr>`}).join("") || emptyRow(11)}
   </tbody></table></div>`;
 }
 function paymentsTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Müşteri/Firma</th><th>Plaka</th><th>Tutar</th><th>Not</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Müşteri/Firma</th><th>Plaka</th><th>Tutar</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
   ${list.map(p=>{const v=getVehicle(p.vehicleId); const c=getCustomer(p.customerId); return `<tr><td>${p.date || "-"}</td><td>${c?.name || "-"}</td><td>${v?.plate || "-"}</td><td class="amount good">${money(p.amount)}</td><td>${p.note || "-"}</td></tr>`}).join("") || emptyRow(5)}
   </tbody></table></div>`;
 }
@@ -341,6 +345,137 @@ window.openCustomer = function(customerId){
   openPage("detail");
 };
 
+
+function serviceHistoryPlainText(vehicleId){
+  const v = getVehicle(vehicleId);
+  const c = getCustomer(v?.customerId);
+  const rows = getServicesByVehicle(vehicleId);
+  const title = `Hiçkorkmaz Garaj - Servis Geçmişi`;
+  const vehicleName = `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
+  let text = `${title}\n\nMüşteri/Firma: ${c?.name || "-"}\nAraç: ${vehicleName}\nMarka/Model: ${[v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-"}\nSon KM: ${kmFormat(vehicleLastKm(vehicleId))}\nSonraki Bakım KM: ${kmFormat(vehicleNextKm(vehicleId))}\nToplam Borç: ${money(vehicleDebt(vehicleId))}\n\n`;
+  if(!rows.length){
+    text += "Servis kaydı bulunamadı.";
+    return text;
+  }
+  rows.forEach((s, i) => {
+    text += `${i+1}) Tarih: ${s.date || "-"}\n`;
+    text += `   Geldiği KM: ${kmFormat(s.currentKm)}\n`;
+    text += `   Sonraki Bakım KM: ${kmFormat(s.nextKm)}\n`;
+    text += `   Yapılan İşlemler: ${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n`;
+    text += `   İşçilik: ${money(s.laborAmount || 0)}\n`;
+    text += `   Parça: ${money(s.partsAmount || 0)}\n`;
+    text += `   Toplam: ${money(s.amount)}\n`;
+    text += `   Not: ${s.note || "-"}\n\n`;
+  });
+  return text;
+}
+
+function serviceHistoryHtml(vehicleId){
+  const v = getVehicle(vehicleId);
+  const c = getCustomer(v?.customerId);
+  const rows = getServicesByVehicle(vehicleId);
+  const vehicleName = `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
+  const rowsHtml = rows.map(s => `
+    <tr>
+      <td>${s.date || "-"}</td>
+      <td>${kmFormat(s.currentKm)}</td>
+      <td>${kmFormat(s.nextKm)}</td>
+      <td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td>
+      <td>${money(s.laborAmount || 0)}</td>
+      <td>${money(s.partsAmount || 0)}</td>
+      <td>${money(s.amount)}</td>
+      <td>${s.note || "-"}</td>
+    </tr>
+  `).join("");
+
+  return `
+    <!doctype html>
+    <html lang="tr">
+    <head>
+      <meta charset="utf-8">
+      <title>Servis Geçmişi - ${vehicleName}</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#111;margin:24px}
+        .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:16px}
+        h1{margin:0;font-size:24px}
+        h2{margin:4px 0 0;font-size:18px}
+        p{margin:4px 0}
+        .muted{color:#555}
+        .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+        .box{border:1px solid #ccc;border-radius:8px;padding:10px}
+        .box span{display:block;color:#666;font-size:12px}
+        .box b{display:block;margin-top:5px;font-size:16px}
+        table{width:100%;border-collapse:collapse;margin-top:16px;font-size:12px}
+        th,td{border:1px solid #ccc;padding:8px;text-align:left;vertical-align:top}
+        th{background:#f2f2f2}
+        .footer{margin-top:24px;color:#666;font-size:12px}
+        @media print{button{display:none} body{margin:12px}}
+      </style>
+    </head>
+    <body>
+      <button onclick="window.print()" style="padding:10px 14px;margin-bottom:14px">Yazdır / PDF Kaydet</button>
+      <div class="head">
+        <div>
+          <h1>Hiçkorkmaz Garaj</h1>
+          <h2>Servis Geçmişi</h2>
+          <p class="muted">Araç bakım ve işlem dökümü</p>
+        </div>
+        <div>
+          <p><b>Tarih:</b> ${today()}</p>
+        </div>
+      </div>
+      <p><b>Müşteri/Firma:</b> ${c?.name || "-"}</p>
+      <p><b>Araç:</b> ${vehicleName}</p>
+      <p><b>Marka/Model:</b> ${[v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-"}</p>
+      <div class="summary">
+        <div class="box"><span>Son KM</span><b>${kmFormat(vehicleLastKm(vehicleId))}</b></div>
+        <div class="box"><span>Sonraki Bakım KM</span><b>${kmFormat(vehicleNextKm(vehicleId))}</b></div>
+        <div class="box"><span>Toplam Borç</span><b>${money(vehicleDebt(vehicleId))}</b></div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Tarih</th>
+            <th>Geldiği KM</th>
+            <th>Sonraki Bakım KM</th>
+            <th>Yapılan İşlemler</th>
+            <th>İşçilik</th>
+            <th>Parça</th>
+            <th>Toplam</th>
+            <th>Not</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || `<tr><td colspan="8">Servis kaydı bulunamadı.</td></tr>`}
+        </tbody>
+      </table>
+      <div class="footer">Bu çıktı Hiçkorkmaz Garaj V7 sistemi üzerinden oluşturulmuştur.</div>
+    </body>
+    </html>
+  `;
+}
+
+window.printServiceHistory = function(vehicleId){
+  const w = window.open("", "_blank");
+  w.document.open();
+  w.document.write(serviceHistoryHtml(vehicleId));
+  w.document.close();
+};
+
+window.downloadServiceHistoryPdf = function(vehicleId){
+  const w = window.open("", "_blank");
+  w.document.open();
+  w.document.write(serviceHistoryHtml(vehicleId));
+  w.document.close();
+  setTimeout(() => w.print(), 500);
+};
+
+window.shareServiceHistoryWhatsApp = function(vehicleId){
+  const text = encodeURIComponent(serviceHistoryPlainText(vehicleId));
+  window.open(`https://wa.me/?text=${text}`, "_blank");
+};
+
+
 window.openVehicle = function(vehicleId){
   const v = getVehicle(vehicleId); if(!v) return;
   const c = getCustomer(v.customerId);
@@ -349,6 +484,9 @@ window.openVehicle = function(vehicleId){
       <div><span class="badge">Araç Kartı / Plaka Geçmişi</span><h2>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</h2><p>${c?.name || "-"} • ${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn primary" onclick="openCustomer('${v.customerId}')">Bu müşterinin tüm araçlarını göster</button>
+        <button class="btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
+        <button class="btn" onclick="downloadServiceHistoryPdf('${v.id}')">PDF</button>
+        <button class="btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WhatsApp</button>
         <button class="btn" onclick="openPage('${lastPageBeforeDetail}')">Geri</button>
       </div>
     </div>
