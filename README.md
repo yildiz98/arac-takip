@@ -118,3 +118,16 @@ Bu düzeltmede tahsilat hesaplama netleştirildi:
 
 Not:
 Daha önce yanlış kaydedilmiş test tahsilatları varsa Ayarlar > Tüm Verileri Sıfırla veya ilgili test kayıtlarını temizleyip yeniden girmen gerekir.
+
+
+## Müşteri/Firma Tahsilat Eşleştirme Fix
+
+Tahsilat ekranındaki alan artık:
+- Müşteri / Firma Adı
+
+Mantık:
+- Plaka kayıtlıysa ödeme sadece araç borcundan düşer.
+- Plaka boşsa ödeme sadece yazılan Müşteri/Firma cari hesabından düşer.
+- Plaka kayıtlı değilse Müşteri/Firma adı varsa cari ödeme olarak işler.
+- Müşteri/Firma adı tam, boşluksuz ve kısmi eşleşmeyle bulunur.
+- Mevcut müşteri/firma bulunamazsa yeni kart oluşturmadan önce onay ister.

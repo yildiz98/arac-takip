@@ -121,12 +121,35 @@ function norm(v){ return safe(v).toLocaleLowerCase("tr-TR").replace(/\s+/g," ").
 function getCustomer(id){ return db.customers.find(x=>x.id===id); }
 function findCustomerByName(name){
   const target = norm(name);
-  return db.customers.find(c => norm(c.name) === target);
+  if(!target) return null;
+
+  let found = db.customers.find(c => norm(c.name) === target);
+  if(found) return found;
+
+  const compact = target.replace(/\s+/g, "");
+  found = db.customers.find(c => norm(c.name).replace(/\s+/g, "") === compact);
+  if(found) return found;
+
+  found = db.customers.find(c => {
+    const cn = norm(c.name);
+    return cn.includes(target) || target.includes(cn);
+  });
+  if(found) return found;
+
+  return null;
 }
 function findOrCreateCustomerByName(name, phone=""){
-  let found = findCustomerByName(name);
+  const cleanName = safe(name).trim();
+  let found = findCustomerByName(cleanName);
   if(found) return found;
-  const created = { id:newId("c"), name:safe(name).trim(), phone:phone || "", type:"Şahıs/Firma", note:"Araç ekleme sırasında otomatik oluşturuldu" };
+
+  const created = {
+    id:newId("c"),
+    name:cleanName,
+    phone:phone || "",
+    type:"Şahıs/Firma",
+    note:"Kayıt sırasında otomatik oluşturuldu"
+  };
   db.customers.push(created);
   return created;
 }
@@ -200,8 +223,6 @@ function vehicleDebt(vehicleId){
 }
 
 function customerPaid(customerId){
-  // Sadece bu müşteri/firma adına kayıtlı tahsilatlar bu cari hesaptan düşer.
-  // Böylece Ahmet'e yazılan ödeme Mehmet'in veya genel carinin borcundan düşmez.
   return db.payments
     .filter(p => p.customerId === customerId)
     .reduce((t,p)=>t+Number(p.amount||0),0);
@@ -210,6 +231,11 @@ function customerPaid(customerId){
 function customerDebt(customerId){
   return customerTotal(customerId)-customerPaid(customerId);
 }
+
+
+
+
+
 
 function paymentTypeText(p){
   if(p.paymentType === "vehicle_only") return "Sadece Araç";
@@ -544,7 +570,7 @@ function servicesTable(list){
   </tbody></table></div>`;
 }
 function paymentsTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Ödeme Tarihi</th><th>Şahıs/Firma</th><th>Plaka</th><th>Tür</th><th>Tutar</th><th>Not</th><th>İşlemi Yapan</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Ödeme Tarihi</th><th>Müşteri/Firma</th><th>Plaka</th><th>Tür</th><th>Tutar</th><th>Not</th><th>İşlemi Yapan</th></tr></thead><tbody>
   ${list.map(p=>{
     const v = getVehicle(p.vehicleId);
     const c = getCustomer(p.customerId);
@@ -941,7 +967,7 @@ window.openModal = function(type){
     setTimeout(() => { bindServiceTotalPreview(); bindServiceTargetFinder(); }, 0);
   }
   if(type === "payment"){
-    document.getElementById("modalBody").innerHTML = `${field("Şahıs / Firma Adı","customerName","text","",false)}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka yazılırsa ödeme sadece o aracın borcuna işlenir. Plaka boşsa ve şahıs/firma adı yazılırsa ödeme sadece cari hesaba işlenir.</p>`;
+    document.getElementById("modalBody").innerHTML = `${field("Müşteri / Firma Adı","customerName","text","",false)}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka kayıtlıysa ödeme sadece o aracın borcuna işlenir. Plaka boşsa Müşteri/Firma adına cari hesaptan düşer.</p>`;
   }
   modal.showModal();
 };
@@ -1032,17 +1058,22 @@ modalForm.addEventListener("submit", function(e){
     let paymentType = "customer_only";
 
     if(foundVehicle){
-      // Plaka kayıtlıysa: ödeme sadece o aracın borcuna bağlanır.
-      // Cari listede de aracın sahibinin satırında görünür, başka şahsa düşmez.
       targetCustomer = getCustomer(foundVehicle.customerId);
       paymentType = "vehicle_only";
     }else{
-      // Plaka yoksa veya kayıtlı değilse: ödeme sadece yazılan şahıs/firma cari hesabına işlenir.
       if(!typedCustomerName){
-        alert("Plaka kayıtlı değilse veya plaka boşsa Şahıs/Firma Adı yazman gerekir.");
+        alert("Cari tahsilat için Müşteri / Firma Adı yazman gerekir.");
         return;
       }
-      targetCustomer = findOrCreateCustomerByName(typedCustomerName, "");
+
+      targetCustomer = findCustomerByName(typedCustomerName);
+
+      if(!targetCustomer){
+        const createOk = confirm("Bu Müşteri/Firma mevcut kayıtlarda bulunamadı. Yeni cari kart oluşturulsun mu?");
+        if(!createOk) return;
+        targetCustomer = findOrCreateCustomerByName(typedCustomerName, "");
+      }
+
       paymentType = "customer_only";
     }
 
@@ -1131,4 +1162,17 @@ window.debugCustomerPayments = function(){
     debt:customerDebt(c.id),
     payments:db.payments.filter(p=>p.customerId===c.id)
   }));
+};
+
+
+window.findCariDebug = function(name){
+  const c = findCustomerByName(name);
+  if(!c) return null;
+  return {
+    customer:c,
+    total:customerTotal(c.id),
+    paid:customerPaid(c.id),
+    debt:customerDebt(c.id),
+    payments:db.payments.filter(p=>p.customerId===c.id)
+  };
 };
