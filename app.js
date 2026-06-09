@@ -171,29 +171,9 @@ function getVehiclesByCustomer(customerId){ return db.vehicles.filter(x=>x.custo
 function getServicesByVehicle(vehicleId){ return db.services.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
 function getPaymentsByVehicle(vehicleId){ return db.payments.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
 function vehicleTotal(vehicleId){ return getServicesByVehicle(vehicleId).reduce((t,x)=>t+Number(x.amount||0),0); }
-function vehiclePaid(vehicleId){ return getPaymentsByVehicle(vehicleId).reduce((t,x)=>t+Number(x.amount||0),0); }
-function vehicleDebt(vehicleId){ return vehicleTotal(vehicleId)-vehiclePaid(vehicleId); }
-function customerTotal(customerId){ return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehicleTotal(v.id),0); }
-function customerPaid(customerId){ return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehiclePaid(v.id),0); }
-function customerDebt(customerId){ return customerTotal(customerId)-customerPaid(customerId); }
-function lastServiceDate(vehicleId){ return getServicesByVehicle(vehicleId)[0]?.date || "-"; }
-function lastServiceRecord(vehicleId){ return getServicesByVehicle(vehicleId)[0] || null; }
-function vehicleLastKm(vehicleId){ return Number(lastServiceRecord(vehicleId)?.currentKm || 0); }
-function vehicleNextKm(vehicleId){ return Number(lastServiceRecord(vehicleId)?.nextKm || 0); }
-function kmFormat(n){ return Number(n||0) ? Number(n).toLocaleString("tr-TR") + " km" : "-"; }
-function remainingKm(vehicleId){
-  const next = vehicleNextKm(vehicleId);
-  const current = vehicleLastKm(vehicleId);
-  if(!next || !current) return null;
-  return next - current;
-}
 
-function paymentTypeText(p){
-  if(p.paymentType === "vehicle_only") return "Sadece Araç";
-  if(p.paymentType === "customer_only") return "Sadece Cari Hesap";
-  if(p.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
-  return p.vehicleId ? "Sadece Araç" : "Sadece Cari Hesap";
-}
+
+
 
 
 const pages = {
@@ -206,7 +186,38 @@ const pages = {
   reports:"Raporlar",
   settings:"Ayarlar",
   detail:"Detay"
-};
+}
+
+function vehiclePaid(vehicleId){
+  // Sadece araç plakasına işlenen tahsilatlar araç borcundan düşer.
+  return db.payments
+    .filter(p => p.vehicleId === vehicleId)
+    .reduce((t,p)=>t+Number(p.amount||0),0);
+}
+
+function vehicleDebt(vehicleId){
+  return vehicleTotal(vehicleId)-vehiclePaid(vehicleId);
+}
+
+function customerPaid(customerId){
+  // Sadece bu müşteri/firma adına kayıtlı tahsilatlar bu cari hesaptan düşer.
+  // Böylece Ahmet'e yazılan ödeme Mehmet'in veya genel carinin borcundan düşmez.
+  return db.payments
+    .filter(p => p.customerId === customerId)
+    .reduce((t,p)=>t+Number(p.amount||0),0);
+}
+
+function customerDebt(customerId){
+  return customerTotal(customerId)-customerPaid(customerId);
+}
+
+function paymentTypeText(p){
+  if(p.paymentType === "vehicle_only") return "Sadece Araç";
+  if(p.paymentType === "customer_only") return "Sadece Cari Hesap";
+  if(p.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
+  return p.vehicleId ? "Sadece Araç" : "Sadece Cari Hesap";
+}
+;
 
 
 
@@ -1021,11 +1032,12 @@ modalForm.addEventListener("submit", function(e){
     let paymentType = "customer_only";
 
     if(foundVehicle){
-      // Plaka kayıtlıysa: sadece araç tahsilatı
+      // Plaka kayıtlıysa: ödeme sadece o aracın borcuna bağlanır.
+      // Cari listede de aracın sahibinin satırında görünür, başka şahsa düşmez.
       targetCustomer = getCustomer(foundVehicle.customerId);
       paymentType = "vehicle_only";
     }else{
-      // Plaka yoksa veya plaka kayıtlı değilse: şahıs/firma cari hesabı
+      // Plaka yoksa veya kayıtlı değilse: ödeme sadece yazılan şahıs/firma cari hesabına işlenir.
       if(!typedCustomerName){
         alert("Plaka kayıtlı değilse veya plaka boşsa Şahıs/Firma Adı yazman gerekir.");
         return;
@@ -1109,3 +1121,14 @@ setupAuth();
 setupMobileMenu();
 applyAuthState();
 if(activeUser) render();
+
+
+window.debugCustomerPayments = function(){
+  return db.customers.map(c => ({
+    name:c.name,
+    id:c.id,
+    paid:customerPaid(c.id),
+    debt:customerDebt(c.id),
+    payments:db.payments.filter(p=>p.customerId===c.id)
+  }));
+};

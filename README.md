@@ -105,3 +105,16 @@ Bu sürümde tahsilat mantığı ayrıldı:
 
 - Plaka yazılır ama sistemde kayıtlı değilse:
   - Şahıs/firma adı varsa cari hesap tahsilatı olarak kaydedilir.
+
+
+## Cari Şahıs/Firma Bazlı Tahsilat Düzeltmesi
+
+Bu düzeltmede tahsilat hesaplama netleştirildi:
+
+- Şahıs/firma adı yazılıp plaka boş bırakılırsa ödeme sadece o şahıs/firma cari hesabından düşer.
+- Plaka yazılır ve kayıtlıysa ödeme sadece o aracın borcundan düşer.
+- Müşteri/firma borç hesabı artık sadece o müşteri/firma ID'sine bağlı ödemeleri düşer.
+- Genel cari hesabından düşme sorunu giderildi.
+
+Not:
+Daha önce yanlış kaydedilmiş test tahsilatları varsa Ayarlar > Tüm Verileri Sıfırla veya ilgili test kayıtlarını temizleyip yeniden girmen gerekir.
