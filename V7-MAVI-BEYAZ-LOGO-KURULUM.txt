@@ -1,0 +1,19 @@
+Hiçkorkmaz Garage V7 - Mavi/Beyaz Logo Tasarım Paketi
+
+Eklenen:
+- Kurumsal mavi/beyaz tema
+- Hiçkorkmaz Garage logosu
+- PWA ikonları
+- Mobil uyumlu mavi tasarım
+- Firebase e-posta/şifre admin/personel sistemi korunmuştur
+
+Yükleme:
+1. ZIP'i indir.
+2. ZIP'i aç.
+3. İçindeki tüm dosyaları GitHub Pages yayın branch'ine yükle.
+4. Commit changes de.
+5. Siteyi Ctrl + F5 ile yenile.
+6. Telefonda ana ekrana eklediysen eski ikonu temizlemek için uygulamayı silip yeniden ana ekrana ekle.
+
+Not:
+firebase-config.js içinde mevcut admin/personel ayarları korunmuştur.

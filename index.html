@@ -4,15 +4,43 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Garaj V7" />
   <title>Hiçkorkmaz Garaj V7</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="layout">
+
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <img src="logo.png" alt="Hiçkorkmaz Garage" class="login-brand-img">
+      <h1>Hiçkorkmaz Garaj</h1>
+      <p>Admin / Personel Girişi</p>
+
+      <form id="loginForm">
+        <div class="field">
+          <label>E-posta</label>
+          <input id="loginEmail" type="email" placeholder="admin@aractakip.com" required />
+        </div>
+        <div class="field">
+          <label>Şifre</label>
+          <input id="loginPassword" type="password" placeholder="Şifre" required />
+        </div>
+        <button class="btn primary login-btn" type="submit">Giriş Yap</button>
+      </form>
+
+      <p class="login-help">
+        Yetki, Firebase'te oluşturduğun e-posta adresine göre belirlenir.
+      </p>
+      <p id="loginError" class="login-error hidden"></p>
+    </div>
+  </div>
+<div class="layout">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-logo">HG</div>
+        <img src="logo.png" alt="Hiçkorkmaz Garage" class="brand-img">
         <div>
           <h1>Hiçkorkmaz Garaj</h1>
           <p>V7 Profesyonel Takip</p>
@@ -31,12 +59,20 @@
       </nav>
     </aside>
 
+    <button id="mobileMenuBtn" class="mobile-menu-btn">☰ Menü</button>
+    <div id="mobileOverlay" class="mobile-overlay"></div>
+
     <main class="content">
       <header class="header">
+        <div class="header-brand">
+          <img src="logo.png" alt="Hiçkorkmaz Garage" class="header-brand-logo">
+        </div>
         <div>
           <h2 id="pageTitle">Dashboard</h2>
           <p id="pageSubtitle">Her ekranda isim, firma veya plaka ile global arama</p>
         </div>
+
+        <div class="user-bar" id="userBar"><span id="activeUserText">Kullanıcı</span><button class="small-btn" id="logoutBtn">Çıkış</button></div>
 
         <div class="search-area">
           <input id="globalSearch" autocomplete="off" placeholder="İsim, soyisim, firma adı veya plaka ara..." />
@@ -77,6 +113,7 @@
     </form>
   </dialog>
 
-  <script src="app.js"></script>
+  
+  <script type="module" src="app.js"></script>
 </body>
 </html>

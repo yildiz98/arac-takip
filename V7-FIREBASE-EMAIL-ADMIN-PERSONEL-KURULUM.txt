@@ -1,0 +1,26 @@
+Hiçkorkmaz Garaj V7 - Firebase E-posta/Şifre Admin-Personel
+
+Bu paket senin Firebase projenle hazırlandı.
+
+Giriş hesapları:
+- admin@aractakip.com -> Admin
+- personel1@aractakip.com -> Personel
+
+Firebase tarafında Email/Password zaten aktif görünüyor.
+Kullanıcıları Firebase Authentication > Users bölümünden oluşturduğun için sistem bu hesaplarla giriş yapar.
+
+Yetki:
+Admin: her şey açık.
+Personel: sadece müşteri/firma kayıt, araç kayıt, servis kayıt.
+
+Yükleme:
+1. ZIP'i indir.
+2. ZIP'i aç.
+3. İçindeki dosyaları GitHub Pages yayın branch'ine yükle.
+4. Commit changes de.
+5. Siteyi Ctrl + F5 ile yenile.
+
+Yeni personel ekleme:
+1. Firebase > Authentication > Users > Add user.
+2. Yeni personel e-posta/şifre oluştur.
+3. firebase-config.js dosyasında PERSONEL_EMAILS listesine e-postayı ekle.

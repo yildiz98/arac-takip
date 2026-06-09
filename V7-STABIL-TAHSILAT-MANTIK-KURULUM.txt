@@ -1,0 +1,14 @@
+V7 Stabil Tahsilat Mantığı
+
+Bu paket stabil sürüm üzerine sadece tahsilat mantığını ekler.
+
+Mantık:
+- Plaka kayıtlıysa: Araç + Cari Hesap
+- Plaka yoksa: Sadece Cari Hesap
+- Plaka kayıtlı değilse: Şahıs/Firma adı zorunlu, sadece cari hesap
+
+Yükleme:
+1. ZIP'i indir.
+2. GitHub Pages yayın branch'ine tüm dosyaları yükle.
+3. Commit changes de.
+4. Siteyi Ctrl + F5 ile yenile.

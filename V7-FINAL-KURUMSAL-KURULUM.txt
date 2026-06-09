@@ -1,0 +1,27 @@
+Hiçkorkmaz Garage V7 Final Kurumsal Kurulum
+
+Bu paket GitHub Pages'e hazırdır.
+
+Yükleme:
+1. ZIP'i indir.
+2. ZIP'i aç.
+3. İçindeki tüm dosyaları GitHub reposunda Pages'in yayın yaptığı branch'e yükle.
+4. Commit changes de.
+5. Siteyi Ctrl + F5 ile yenile.
+
+Önemli:
+- Sistem temiz başlangıçla gelir.
+- Eski tarayıcıda test verileri görünürse:
+  Ayarlar > Tüm Verileri Sıfırla
+  veya tarayıcı localStorage temizle.
+
+Firebase:
+- Email/Password aktif olmalı.
+- Authorized domains içinde yildiz98.github.io olmalı.
+- Users kısmında admin@aractakip.com ve personel1@aractakip.com kullanıcıları olmalı.
+
+Personel:
+Sadece müşteri/firma, araç ve servis kaydı yapabilir.
+
+Admin:
+Tüm yetkilere sahiptir.

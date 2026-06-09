@@ -1,0 +1,23 @@
+Hiçkorkmaz Garaj V7 - Google Admin / Personel Girişi
+
+Eklenen:
+- Google hesabı ile giriş.
+- Admin/personel e-posta bazlı yetki.
+- Admin tüm yetkilere sahip.
+- Personel sadece müşteri/firma kayıt, araç kayıt ve servis kayıt yapabilir.
+- Personel WP/PDF/Yazdır/Borç/Rapor/Ayarlar kullanamaz.
+
+Kurulum:
+1. Firebase Console'da proje oluştur.
+2. Authentication > Sign-in method > Google sağlayıcısını aktif et.
+3. Authentication > Settings > Authorized domains:
+   yildiz98.github.io ekle.
+4. Project settings > General > Web app config bilgilerini al.
+5. Paketteki firebase-config.js dosyasına config bilgilerini yapıştır.
+6. ADMIN_EMAILS ve PERSONEL_EMAILS listelerine Google hesaplarını yaz.
+7. Dosyaları GitHub Pages yayın branch'ine yükle.
+8. Commit changes de.
+9. Siteyi Ctrl + F5 ile yenile.
+
+Önemli:
+Bu giriş sistemi Firebase Authentication kullanır. firebase-config.js doldurulmadan giriş çalışmaz.

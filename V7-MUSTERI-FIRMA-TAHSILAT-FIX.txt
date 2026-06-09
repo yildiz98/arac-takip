@@ -1,0 +1,14 @@
+V7 Müşteri/Firma Tahsilat Fix
+
+Test:
+1. Müşteriler/Firmalar bölümünde bir müşteri/firma oluştur.
+2. Tahsilat ekle.
+3. Plaka boş bırak.
+4. Müşteri / Firma Adı alanına aynı adı yaz.
+5. Ödeme o müşteri/firma cari hesabından düşmelidir.
+
+Yükleme:
+1. ZIP'i indir.
+2. GitHub Pages yayın branch'ine yükle.
+3. Commit changes de.
+4. Ctrl + F5 yap.

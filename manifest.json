@@ -1,10 +1,23 @@
 {
-  "name": "Hiçkorkmaz Garaj V7 Global Arama",
-  "short_name": "Garaj V7",
+  "name": "Hiçkorkmaz Garage V7 Final",
+  "short_name": "H.Garage",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "description": "Her ekranda isim, firma ve plaka ile global araç takip sistemi",
-  "icons": []
+  "background_color": "#ffffff",
+  "theme_color": "#063080",
+  "description": "Hiçkorkmaz Garage araç servis ve cari takip sistemi",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "scope": "./",
+  "orientation": "portrait"
 }

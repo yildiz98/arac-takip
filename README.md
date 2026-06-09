@@ -1,144 +1,133 @@
-# Hiçkorkmaz Garaj V7 - Global Arama Güncellemesi
+# Hiçkorkmaz Garage V7 Final Kurumsal
 
-## Bu pakette eklenenler
+GitHub Pages için hazır final pakettir.
 
-- Arama artık sadece Cari Hesap bölümünde değil, her ekranda çalışır.
-- Dashboard, Araçlar, Araç Geçmişi, Servis Kayıtları, Tahsilatlar, Borç Takibi ve Raporlar ekranlarında aynı global arama kutusu aktiftir.
-- İsim / soyisim / firma adı aranınca müşteri veya firma kartı açılır.
-- Müşteri / firma kartında kayıtlı tüm plakalar listelenir.
-- Plaka aranınca direkt araç geçmişi açılır.
-- Araç detayında “Bu müşterinin tüm araçlarını göster” butonu eklendi.
-- Servis filtresinde de isim / firma / plaka / işlem arama desteklenir.
-- Mevcut kayıtları silmeden güncelleme mantığı korunur.
+## İçerik
 
-## GitHub Pages'e yükleme
+- Mavi/beyaz kurumsal tasarım
+- Hiçkorkmaz Garage logosu
+- PWA / ana ekrana ekleme desteği
+- Mobil uyumlu menü
+- Firebase e-posta/şifre giriş sistemi
+- Admin / Personel yetki ayrımı
+- Temiz başlangıç verisi: 0 müşteri, 0 araç, 0 servis, 0 tahsilat
+- Belirgin mavi hızlı işlem butonları
+- Müşteri/firma kaydı
+- Araç kaydı
+- Plakalı ve plakasız araç desteği
+- Servis kaydı
+- Geldiği KM
+- Bir sonraki bakım KM
+- Yağ, filtre, balata vb. çoklu işlem seçimi
+- İşçilik + parça + otomatik toplam
+- Tek servis WP / PDF / Yazdır
+- Admin için tüm geçmiş WP / PDF / Yazdır
+- Müşteri/firma toplam borcu
+- Plaka bazlı borç
+- İşlemi yapan personel kaydı
+
+## Giriş Yetkileri
+
+Firebase Authentication > Users kısmında oluşturduğun hesaplara göre çalışır.
+
+Admin:
+- admin@aractakip.com
+
+Personel:
+- personel1@aractakip.com
+
+Bu e-postalar `firebase-config.js` içinde düzenlenebilir.
+
+## Yetkiler
+
+Admin:
+- Tüm menüler
+- Tahsilat
+- Borç takibi
+- Raporlar
+- Ayarlar
+- WP / PDF / Yazdır
+- Yedekleme
+- Tüm verileri sıfırlama
+
+Personel:
+- Müşteri/firma ekler
+- Araç ekler
+- Servis kaydı ekler
+
+Personel kullanamaz:
+- WP / PDF / Yazdır
+- Tahsilat
+- Borç takibi
+- Raporlar
+- Ayarlar
+- Veri silme / sıfırlama
+
+## GitHub Kurulum
 
 1. ZIP dosyasını indir.
-2. ZIP içindeki dosyaları çıkar.
-3. GitHub reposunda Pages hangi branch'ten yayın yapıyorsa o branch'i aç.
-   - Sende ekranda `v6-tasarim` görünüyordu.
-4. Şu dosyaları yükle:
-   - index.html
-   - style.css
-   - app.js
-   - manifest.json
-   - README.md
+2. ZIP'i aç.
+3. İçindeki dosyaların tamamını GitHub Pages yayın branch'ine yükle.
+4. Sende önceki ayarda branch `v6-tasarim` görünüyordu.
 5. Commit changes de.
 6. 1-2 dakika bekle.
 7. Siteyi Ctrl + F5 ile yenile.
 
-## Veri notu
+## Firebase Kontrol
 
-Kayıtlar tarayıcı localStorage içinde tutulur.
-Bu dosyaları GitHub'a yüklemek mevcut cihazdaki kayıtları silmez.
-Yine de Ayarlar bölümünden yedek alman önerilir.
-
-
-## V7 Servis Kaydı Seçimli İşlem Güncellemesi
-
-Bu sürümde Servis Kaydı ekranına seçilebilir bakım/işlem kalemleri eklendi:
-
-- Motor Yağı
-- Yağ Filtresi
-- Hava Filtresi
-- Polen Filtresi
-- Yakıt / Mazot Filtresi
-- Ön Balata
-- Arka Balata
-- Fren Diski
-- Fren Hidroliği
-- Antifriz
-- Akü
-- Buji
-- Triger Seti
-- Debriyaj
-- Şanzıman Yağı
-- Rot Balans
-- Lastik
-- Klima Gazı
-- Genel Kontrol
-- Elektrik Arıza
-- Kaporta / Boya
-- Diğer
-
-Seçilen kalemler servis geçmişinde görünür ve servis filtresinde aranabilir.
+Firebase Console'da:
+- Authentication > Sign-in method > Email/Password aktif olmalı.
+- Authentication > Settings > Authorized domains içinde `yildiz98.github.io` olmalı.
+- Authentication > Users kısmında admin/personel kullanıcıları oluşturulmuş olmalı.
 
 
-## V7 Servis Kaydında Elle Plaka Yazma Güncellemesi
+## Stabil Tahsilat Mantığı Güncellemesi
 
-Bu sürümde Servis Kaydı eklerken plaka artık açılır listeden seçilmez.
+Sistemi bozmadan sadece tahsilat mantığı güncellendi:
 
-Yeni mantık:
-- Servis kaydında plaka elle yazılır.
-- Yazılan plaka mevcut araçlarda kayıtlıysa sistem otomatik olarak o müşteri/firma altına işler.
-- Plaka kayıtlı değilse sistem uyarı verir.
-- Plaka kayıtlı değilse önce Araçlar bölümünden müşteri/firma adına araç eklenmelidir.
-- Servis geçmişinde yine müşteri/firma, plaka ve seçilen işlem kalemleri görünür.
+- Plaka kayıtlıysa: ödeme araç borcundan ve müşteri/firma cari hesabından düşer.
+- Plaka boşsa: ödeme sadece şahıs/firma cari hesabından düşer.
+- Plaka kayıtlı değilse: şahıs/firma adı zorunludur ve ödeme sadece cari hesap tahsilatı olur.
+- Tahsilat tablosuna ödeme türü eklendi.
 
 
-## V7 Final Professional Güncellemesi
+## Tahsilat Araç veya Cari Ayrı Mantık
 
-Son eklenen özellikler:
+Bu sürümde tahsilat mantığı ayrıldı:
 
-- Servis kaydında plaka elle yazılır.
-- Plaka kayıtlıysa servis otomatik müşteri/firma altına kaydedilir.
-- Geldiği KM alanı eklendi.
-- Bir Sonraki Bakım KM alanı eklendi.
-- İşçilik Tutarı eklendi.
-- Parça Tutarı eklendi.
-- Toplam tutar işçilik + parça olarak otomatik hesaplanır.
-- Araç kartında Son KM görünür.
-- Araç kartında Bir Sonraki Bakım KM görünür.
-- Araç kartında Kalan KM görünür.
-- Dashboard'da Yaklaşan Bakım / KM Kontrol listesi vardır.
-- Girilen KM önceki servis KM'sinden düşükse uyarı verir.
-- Servis geçmişinde KM, seçilen işlemler, işçilik, parça ve toplam tutar görünür.
+- Plaka yazılır ve plaka sistemde kayıtlıysa:
+  - Ödeme sadece o aracın borcuna işlenir.
+  - Tahsilat türü: Sadece Araç
 
-Servis işlem seçenekleri:
-Motor Yağı, Yağ Filtresi, Hava Filtresi, Polen Filtresi, Yakıt / Mazot Filtresi, Ön Balata, Arka Balata, Fren Diski, Fren Hidroliği, Antifriz, Akü, Buji, Triger Seti, Debriyaj, Şanzıman Yağı, Rot Balans, Lastik, Klima Gazı, Genel Kontrol, Elektrik Arıza, Kaporta / Boya, Diğer.
+- Plaka boş bırakılır ve şahıs/firma adı yazılırsa:
+  - Ödeme sadece şahıs/firma cari hesabına işlenir.
+  - Tahsilat türü: Sadece Cari Hesap
+
+- Plaka yazılır ama sistemde kayıtlı değilse:
+  - Şahıs/firma adı varsa cari hesap tahsilatı olarak kaydedilir.
 
 
-## V7 Final Araç Ekleme Güncellemesi
+## Cari Şahıs/Firma Bazlı Tahsilat Düzeltmesi
 
-Araç ekleme kısmında artık müşteri/firma açılır listeden seçilmez.
+Bu düzeltmede tahsilat hesaplama netleştirildi:
 
-Yeni mantık:
-- Müşteri / Firma Adı elle yazılır.
-- Telefon isteğe bağlı yazılır.
-- Müşteri/firma sistemde varsa araç ona bağlanır.
-- Müşteri/firma sistemde yoksa otomatik yeni müşteri/firma kartı oluşturulur.
-- Plaka isteğe bağlıdır.
-- Plakası olmayan araçlar için “Plakasız Araç Tanımı” alanı eklendi.
-- Örnek: Forklift, Römork, Atölye Aracı, Test Aracı.
-- Plaka boş bırakılırsa sistem otomatik PLakasız kayıt numarası üretir.
-- Servis kaydında plaka/tanım yazılarak da kayıtlı araca ulaşılabilir.
+- Şahıs/firma adı yazılıp plaka boş bırakılırsa ödeme sadece o şahıs/firma cari hesabından düşer.
+- Plaka yazılır ve kayıtlıysa ödeme sadece o aracın borcundan düşer.
+- Müşteri/firma borç hesabı artık sadece o müşteri/firma ID'sine bağlı ödemeleri düşer.
+- Genel cari hesabından düşme sorunu giderildi.
+
+Not:
+Daha önce yanlış kaydedilmiş test tahsilatları varsa Ayarlar > Tüm Verileri Sıfırla veya ilgili test kayıtlarını temizleyip yeniden girmen gerekir.
 
 
-## V7 Esnek Servis Kaydı Güncellemesi
+## Müşteri/Firma Tahsilat Eşleştirme Fix
 
-Servis kaydında artık tek alan çalışır:
+Tahsilat ekranındaki alan artık:
+- Müşteri / Firma Adı
 
-- Plaka
-- Plakasız araç tanımı
-- Müşteri/firma adı
-- Şahıs adı
-
-Yeni mantık:
-- Yazılan değer plakaysa direkt o araç bulunur.
-- Yazılan değer plakasız araç tanımıysa direkt o araç bulunur.
-- Yazılan değer müşteri/firma adıysa o müşterinin araçları kontrol edilir.
-- Müşteri/firma adına bağlı tek araç varsa otomatik o araca kaydeder.
-- Birden fazla araç varsa servis formunda seçim alanı açılır ve doğru araç seçilir.
-
-
-## V7 Servis Geçmişi Yazdır / PDF / WhatsApp Güncellemesi
-
-Eklenen özellikler:
-- Araç detayında servis geçmişi için Yazdır butonu.
-- Araç detayında PDF butonu.
-- Araç detayında WhatsApp paylaş butonu.
-- Araç listesinde hızlı Yazdır ve WP butonları.
-- Servis geçmişi çıktısında yapılan işlemler, geldiği KM, sonraki bakım KM, işçilik, parça, toplam ve notlar görünür.
-
-PDF Notu:
-Tarayıcı yazdır penceresi açılır. Hedef olarak “PDF olarak kaydet” seçilerek PDF alınır.
+Mantık:
+- Plaka kayıtlıysa ödeme sadece araç borcundan düşer.
+- Plaka boşsa ödeme sadece yazılan Müşteri/Firma cari hesabından düşer.
+- Plaka kayıtlı değilse Müşteri/Firma adı varsa cari ödeme olarak işler.
+- Müşteri/Firma adı tam, boşluksuz ve kısmi eşleşmeyle bulunur.
+- Mevcut müşteri/firma bulunamazsa yeni kart oluşturmadan önce onay ister.

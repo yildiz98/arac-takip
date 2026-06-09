@@ -1,0 +1,19 @@
+V7 Cari Şahıs/Firma Bazlı Tahsilat Düzeltmesi
+
+Mantık:
+1. Plaka kayıtlıysa:
+   - Ödeme sadece o araçtan düşer.
+
+2. Plaka boşsa ve şahıs/firma adı yazılırsa:
+   - Ödeme sadece o şahıs/firma cari hesabından düşer.
+
+3. Artık ödeme genel cari hesaptan değil, ilgili müşteri/firma ID'sinden düşer.
+
+Yükleme:
+1. ZIP'i indir.
+2. GitHub Pages yayın branch'ine yükle.
+3. Commit changes de.
+4. Ctrl + F5 yap.
+
+Önemli:
+Önceden yanlış girilmiş test ödemelerini sil veya sistemi temizleyip yeniden test et.
