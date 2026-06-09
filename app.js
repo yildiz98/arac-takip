@@ -435,7 +435,7 @@ function renderDashboard(){
       ${stat("Toplam Araç", db.vehicles.length)}
       ${stat("Toplam Müşteri/Firma", db.customers.length)}
       ${stat("Toplam Alacak", money(totalDebt), totalDebt>0?"bad":"good")}
-      ${stat("Toplam Ciro", money(totalRevenue))}
+      ${stat("Toplam Ciro", money(totalRevenue), "good")}
       ${stat("Bugünkü Tahsilat", money(todayPaid), "good")}
     </div>
     <div class="grid two">
