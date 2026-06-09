@@ -1,9 +1,10 @@
 {
-  "name": "Hiçkorkmaz Garaj V7",
+  "name": "Hiçkorkmaz Garaj V7 Profesyonel",
   "short_name": "Garaj V7",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
+  "description": "Müşteri, firma, plaka, servis, tahsilat ve borç takip sistemi",
   "icons": []
 }
