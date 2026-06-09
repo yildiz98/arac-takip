@@ -1147,13 +1147,30 @@ window.importData = function(event){
 };
 window.resetAllData = function(){
   if(!requireAdmin()) return;
-  const ok = confirm("Tüm müşteri, araç, servis ve tahsilat kayıtları silinecek. Emin misin?");
-  if(!ok) return;
-  db = { customers: [], vehicles: [], services: [], payments: [] };
-  persist();
-  alert("Sistem temizlendi.");
-};
 
+  const password = prompt("Silme şifresini giriniz:");
+
+  if(password !== "212198"){
+    alert("Hatalı şifre!");
+    return;
+  }
+
+  const ok = confirm(
+    "DİKKAT!\n\nTüm müşteri, araç, servis ve tahsilat kayıtları silinecek.\n\nDevam etmek istiyor musun?"
+  );
+
+  if(!ok) return;
+
+  db = {
+    customers: [],
+    vehicles: [],
+    services: [],
+    payments: []
+  };
+
+  persist();
+  alert("Tüm veriler silindi.");
+};
 window.clearDemo = function(){
   if(!requireAdmin()) return;
   db.customers = db.customers.filter(x=>!x.id.includes("_demo_"));
