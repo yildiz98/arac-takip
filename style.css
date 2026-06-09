@@ -664,3 +664,30 @@ td,th{
     background:#063080 !important;
     color:#ffffff !important;
 }
+/* Dashboard Kart Renkleri - Belirgin */
+.card .value.good{
+    color:#16a34a !important;
+    font-weight:900 !important;
+}
+
+.card .value.bad{
+    color:#dc2626 !important;
+    font-weight:900 !important;
+}
+
+.card .value.warn{
+    color:#f97316 !important;
+    font-weight:900 !important;
+}
+
+.card:has(.value.good){
+    border-top:4px solid #16a34a !important;
+}
+
+.card:has(.value.bad){
+    border-top:4px solid #dc2626 !important;
+}
+
+.card:has(.value.warn){
+    border-top:4px solid #f97316 !important;
+}
