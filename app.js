@@ -626,36 +626,40 @@ function serviceSinglePlainText(serviceId){
     [v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-";
 
   let text = `🔧 HİÇKORKMAZ GARAJ\n`;
-  text += `━━━━━━━━━━━━━━━\n\n`;
+text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-  text += `👤 Müşteri/Firma\n`;
-  text += `${c?.name || "-"}\n\n`;
+text += `👤 Müşteri/Firma\n`;
+text += `${c?.name || "-"}\n\n`;
 
-  text += `🚗 Araç\n`;
-  text += `${vehicleName}\n`;
-  text += `${vehicleModel}\n\n`;
+text += `🚗 Araç\n`;
+text += `${vehicleName}\n`;
+text += `${vehicleModel}\n\n`;
 
-  text += `📅 Servis Tarihi: ${s.date || "-"}\n`;
-  text += `⏱️ KM: ${kmFormat(s.currentKm)}\n`;
-  text += `🔜 Sonraki Bakım: ${kmFormat(s.nextKm)}\n\n`;
+text += `📅 Servis Tarihi\n`;
+text += `${s.date || "-"}\n\n`;
 
-  text += `✅ Yapılan İşlemler\n`;
-  text += `${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n\n`;
+text += `🔢 KM Bilgileri\n`;
+text += `Geldiği KM: ${kmFormat(s.currentKm)}\n`;
+text += `Sonraki Bakım: ${kmFormat(s.nextKm)}\n\n`;
 
-  text += `💰 Ücret Bilgileri\n`;
-  text += `İşçilik: ${money(s.laborAmount || 0)}\n`;
-  text += `Parça: ${money(s.partsAmount || 0)}\n`;
-  text += `Toplam: ${money(s.amount)}\n\n`;
+text += `🔧 Yapılan İşlemler\n`;
+text += `${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n\n`;
 
-  if(s.note){
-    text += `📝 Not\n${s.note}\n\n`;
-  }
+text += `💰 Ücret Bilgileri\n`;
+text += `İşçilik: ${money(s.laborAmount || 0)}\n`;
+text += `Parça: ${money(s.partsAmount || 0)}\n`;
+text += `Toplam: ${money(s.amount)}\n\n`;
 
-  text += `👨‍🔧 İşlemi Yapan\n`;
-  text += `${s.createdBy || "-"}\n\n`;
+if(s.note){
+  text += `📝 Not\n`;
+  text += `${s.note}\n\n`;
+}
 
-  text += `Teşekkür ederiz.\n`;
-  text += `Hiçkorkmaz Garaj`;
+text += `👨‍🔧 İşlemi Yapan\n`;
+text += `${s.createdBy || "-"}\n\n`;
+
+text += `🙏 Bizi tercih ettiğiniz için teşekkür ederiz.\n`;
+text += `📞 HİÇKORKMAZ GARAJ`;
 
   return text;
 }
