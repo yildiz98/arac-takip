@@ -13,8 +13,12 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-logo">HG</div>
-        <div><h1>Hiçkorkmaz Garaj</h1><p>V7 Profesyonel Takip</p></div>
+        <div>
+          <h1>Hiçkorkmaz Garaj</h1>
+          <p>V7 Profesyonel Takip</p>
+        </div>
       </div>
+
       <nav class="menu">
         <button class="menu-item active" data-page="dashboard">Dashboard</button>
         <button class="menu-item" data-page="customers">Müşteriler / Firmalar</button>
@@ -26,14 +30,20 @@
         <button class="menu-item" data-page="settings">Ayarlar</button>
       </nav>
     </aside>
+
     <main class="content">
       <header class="header">
-        <div><h2 id="pageTitle">Dashboard</h2><p id="pageSubtitle">Müşteri, firma, plaka, servis ve borç takibi</p></div>
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p id="pageSubtitle">Her ekranda isim, firma veya plaka ile global arama</p>
+        </div>
+
         <div class="search-area">
           <input id="globalSearch" autocomplete="off" placeholder="İsim, soyisim, firma adı veya plaka ara..." />
           <div id="searchResults" class="search-results hidden"></div>
         </div>
       </header>
+
       <section id="dashboard" class="page active"></section>
       <section id="customers" class="page"></section>
       <section id="vehicles" class="page"></section>
@@ -45,19 +55,28 @@
       <section id="detail" class="page"></section>
     </main>
   </div>
+
   <div class="quick-actions">
     <button class="action primary" id="btnCustomer">+ Müşteri/Firma</button>
     <button class="action" id="btnVehicle">+ Araç</button>
     <button class="action" id="btnService">+ Servis</button>
     <button class="action" id="btnPayment">+ Tahsilat</button>
   </div>
+
   <dialog id="modal">
     <form id="modalForm" method="dialog">
-      <div class="modal-head"><h3 id="modalTitle">Kayıt Ekle</h3><button type="button" class="icon-btn" id="closeModal">×</button></div>
+      <div class="modal-head">
+        <h3 id="modalTitle">Kayıt Ekle</h3>
+        <button type="button" class="icon-btn" id="closeModal">×</button>
+      </div>
       <div id="modalBody"></div>
-      <div class="modal-actions"><button type="button" class="btn ghost" id="cancelModal">Vazgeç</button><button type="submit" class="btn primary">Kaydet</button></div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="cancelModal">Vazgeç</button>
+        <button type="submit" class="btn primary">Kaydet</button>
+      </div>
     </form>
   </dialog>
+
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,26 +1,34 @@
-# Hiçkorkmaz Garaj V7 Profesyonel
+# Hiçkorkmaz Garaj V7 - Global Arama Güncellemesi
 
-## Kurulum
+## Bu pakette eklenenler
+
+- Arama artık sadece Cari Hesap bölümünde değil, her ekranda çalışır.
+- Dashboard, Araçlar, Araç Geçmişi, Servis Kayıtları, Tahsilatlar, Borç Takibi ve Raporlar ekranlarında aynı global arama kutusu aktiftir.
+- İsim / soyisim / firma adı aranınca müşteri veya firma kartı açılır.
+- Müşteri / firma kartında kayıtlı tüm plakalar listelenir.
+- Plaka aranınca direkt araç geçmişi açılır.
+- Araç detayında “Bu müşterinin tüm araçlarını göster” butonu eklendi.
+- Servis filtresinde de isim / firma / plaka / işlem arama desteklenir.
+- Mevcut kayıtları silmeden güncelleme mantığı korunur.
+
+## GitHub Pages'e yükleme
+
 1. ZIP dosyasını indir.
 2. ZIP içindeki dosyaları çıkar.
-3. GitHub reposuna şu dosyaları yükle: index.html, style.css, app.js, manifest.json, README.md
-4. Commit changes de.
-5. Settings > Pages bölümünden Branch: main, Folder: /root seçili olsun.
+3. GitHub reposunda Pages hangi branch'ten yayın yapıyorsa o branch'i aç.
+   - Sende ekranda `v6-tasarim` görünüyordu.
+4. Şu dosyaları yükle:
+   - index.html
+   - style.css
+   - app.js
+   - manifest.json
+   - README.md
+5. Commit changes de.
+6. 1-2 dakika bekle.
+7. Siteyi Ctrl + F5 ile yenile.
 
-## Özellikler
-- Sol menü: logo, Dashboard, Müşteriler/Firmalar, Araçlar, Servis Kayıtları, Tahsilatlar, Borç Takibi, Raporlar, Ayarlar
-- Dashboard üst kartları: Toplam Araç, Toplam Müşteri/Firma, Toplam Alacak, Toplam Ciro, Bugünkü Tahsilat
-- Alt bölüm: Son servis kayıtları, Alacaklı müşteriler, Yaklaşan bakım/kontrol
-- İsim, soyisim, firma adı veya plaka ile arama
-- Plaka aranırsa direkt araç geçmişi açılır
-- İsim/firma aranırsa kayıtlı tüm plakalar listelenir
-- Müşteri/Firma kartı: telefon, araç sayısı, toplam borç, toplam ödeme, toplam işlem tutarı
-- Araç detay: plaka, sahibi/firma, marka model, toplam borç, servis geçmişi, tahsilat geçmişi, notlar
-- Plaka bazlı borç ve müşteri/firma toplam borcu
-- Servis geçmişi filtresi, plakaya göre hızlı erişim, tarihe göre servis arama
-- Günlük tahsilat takibi
-- Mobil uyumlu koyu tema
-- Verileri yedekleme ve geri yükleme
+## Veri notu
 
-## Veri Notu
-Veriler tarayıcıdaki localStorage içinde saklanır. GitHub'a yeni dosya yüklemek mevcut kayıtları silmez. Tarayıcı verileri temizlenirse kayıtlar silinebilir; Ayarlar bölümünden düzenli yedek alın.
+Kayıtlar tarayıcı localStorage içinde tutulur.
+Bu dosyaları GitHub'a yüklemek mevcut cihazdaki kayıtları silmez.
+Yine de Ayarlar bölümünden yedek alman önerilir.

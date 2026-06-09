@@ -1,10 +1,10 @@
 {
-  "name": "Hiçkorkmaz Garaj V7 Profesyonel",
+  "name": "Hiçkorkmaz Garaj V7 Global Arama",
   "short_name": "Garaj V7",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
-  "description": "Müşteri, firma, plaka, servis, tahsilat ve borç takip sistemi",
+  "description": "Her ekranda isim, firma ve plaka ile global araç takip sistemi",
   "icons": []
 }
