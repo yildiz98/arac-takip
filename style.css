@@ -727,3 +727,14 @@ td,th{
     color:#0d47a1;
     font-size:18px;
 }
+.menu-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.menu-item i{
+    width:18px;
+    text-align:center;
+    font-size:16px;
+}
