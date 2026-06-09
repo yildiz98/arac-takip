@@ -1,26 +1,144 @@
-# Hiçkorkmaz Garaj V7 Profesyonel
+# Hiçkorkmaz Garaj V7 - Global Arama Güncellemesi
 
-## Kurulum
+## Bu pakette eklenenler
+
+- Arama artık sadece Cari Hesap bölümünde değil, her ekranda çalışır.
+- Dashboard, Araçlar, Araç Geçmişi, Servis Kayıtları, Tahsilatlar, Borç Takibi ve Raporlar ekranlarında aynı global arama kutusu aktiftir.
+- İsim / soyisim / firma adı aranınca müşteri veya firma kartı açılır.
+- Müşteri / firma kartında kayıtlı tüm plakalar listelenir.
+- Plaka aranınca direkt araç geçmişi açılır.
+- Araç detayında “Bu müşterinin tüm araçlarını göster” butonu eklendi.
+- Servis filtresinde de isim / firma / plaka / işlem arama desteklenir.
+- Mevcut kayıtları silmeden güncelleme mantığı korunur.
+
+## GitHub Pages'e yükleme
+
 1. ZIP dosyasını indir.
 2. ZIP içindeki dosyaları çıkar.
-3. GitHub reposuna şu dosyaları yükle: index.html, style.css, app.js, manifest.json, README.md
-4. Commit changes de.
-5. Settings > Pages bölümünden Branch: main, Folder: /root seçili olsun.
+3. GitHub reposunda Pages hangi branch'ten yayın yapıyorsa o branch'i aç.
+   - Sende ekranda `v6-tasarim` görünüyordu.
+4. Şu dosyaları yükle:
+   - index.html
+   - style.css
+   - app.js
+   - manifest.json
+   - README.md
+5. Commit changes de.
+6. 1-2 dakika bekle.
+7. Siteyi Ctrl + F5 ile yenile.
 
-## Özellikler
-- Sol menü: logo, Dashboard, Müşteriler/Firmalar, Araçlar, Servis Kayıtları, Tahsilatlar, Borç Takibi, Raporlar, Ayarlar
-- Dashboard üst kartları: Toplam Araç, Toplam Müşteri/Firma, Toplam Alacak, Toplam Ciro, Bugünkü Tahsilat
-- Alt bölüm: Son servis kayıtları, Alacaklı müşteriler, Yaklaşan bakım/kontrol
-- İsim, soyisim, firma adı veya plaka ile arama
-- Plaka aranırsa direkt araç geçmişi açılır
-- İsim/firma aranırsa kayıtlı tüm plakalar listelenir
-- Müşteri/Firma kartı: telefon, araç sayısı, toplam borç, toplam ödeme, toplam işlem tutarı
-- Araç detay: plaka, sahibi/firma, marka model, toplam borç, servis geçmişi, tahsilat geçmişi, notlar
-- Plaka bazlı borç ve müşteri/firma toplam borcu
-- Servis geçmişi filtresi, plakaya göre hızlı erişim, tarihe göre servis arama
-- Günlük tahsilat takibi
-- Mobil uyumlu koyu tema
-- Verileri yedekleme ve geri yükleme
+## Veri notu
 
-## Veri Notu
-Veriler tarayıcıdaki localStorage içinde saklanır. GitHub'a yeni dosya yüklemek mevcut kayıtları silmez. Tarayıcı verileri temizlenirse kayıtlar silinebilir; Ayarlar bölümünden düzenli yedek alın.
+Kayıtlar tarayıcı localStorage içinde tutulur.
+Bu dosyaları GitHub'a yüklemek mevcut cihazdaki kayıtları silmez.
+Yine de Ayarlar bölümünden yedek alman önerilir.
+
+
+## V7 Servis Kaydı Seçimli İşlem Güncellemesi
+
+Bu sürümde Servis Kaydı ekranına seçilebilir bakım/işlem kalemleri eklendi:
+
+- Motor Yağı
+- Yağ Filtresi
+- Hava Filtresi
+- Polen Filtresi
+- Yakıt / Mazot Filtresi
+- Ön Balata
+- Arka Balata
+- Fren Diski
+- Fren Hidroliği
+- Antifriz
+- Akü
+- Buji
+- Triger Seti
+- Debriyaj
+- Şanzıman Yağı
+- Rot Balans
+- Lastik
+- Klima Gazı
+- Genel Kontrol
+- Elektrik Arıza
+- Kaporta / Boya
+- Diğer
+
+Seçilen kalemler servis geçmişinde görünür ve servis filtresinde aranabilir.
+
+
+## V7 Servis Kaydında Elle Plaka Yazma Güncellemesi
+
+Bu sürümde Servis Kaydı eklerken plaka artık açılır listeden seçilmez.
+
+Yeni mantık:
+- Servis kaydında plaka elle yazılır.
+- Yazılan plaka mevcut araçlarda kayıtlıysa sistem otomatik olarak o müşteri/firma altına işler.
+- Plaka kayıtlı değilse sistem uyarı verir.
+- Plaka kayıtlı değilse önce Araçlar bölümünden müşteri/firma adına araç eklenmelidir.
+- Servis geçmişinde yine müşteri/firma, plaka ve seçilen işlem kalemleri görünür.
+
+
+## V7 Final Professional Güncellemesi
+
+Son eklenen özellikler:
+
+- Servis kaydında plaka elle yazılır.
+- Plaka kayıtlıysa servis otomatik müşteri/firma altına kaydedilir.
+- Geldiği KM alanı eklendi.
+- Bir Sonraki Bakım KM alanı eklendi.
+- İşçilik Tutarı eklendi.
+- Parça Tutarı eklendi.
+- Toplam tutar işçilik + parça olarak otomatik hesaplanır.
+- Araç kartında Son KM görünür.
+- Araç kartında Bir Sonraki Bakım KM görünür.
+- Araç kartında Kalan KM görünür.
+- Dashboard'da Yaklaşan Bakım / KM Kontrol listesi vardır.
+- Girilen KM önceki servis KM'sinden düşükse uyarı verir.
+- Servis geçmişinde KM, seçilen işlemler, işçilik, parça ve toplam tutar görünür.
+
+Servis işlem seçenekleri:
+Motor Yağı, Yağ Filtresi, Hava Filtresi, Polen Filtresi, Yakıt / Mazot Filtresi, Ön Balata, Arka Balata, Fren Diski, Fren Hidroliği, Antifriz, Akü, Buji, Triger Seti, Debriyaj, Şanzıman Yağı, Rot Balans, Lastik, Klima Gazı, Genel Kontrol, Elektrik Arıza, Kaporta / Boya, Diğer.
+
+
+## V7 Final Araç Ekleme Güncellemesi
+
+Araç ekleme kısmında artık müşteri/firma açılır listeden seçilmez.
+
+Yeni mantık:
+- Müşteri / Firma Adı elle yazılır.
+- Telefon isteğe bağlı yazılır.
+- Müşteri/firma sistemde varsa araç ona bağlanır.
+- Müşteri/firma sistemde yoksa otomatik yeni müşteri/firma kartı oluşturulur.
+- Plaka isteğe bağlıdır.
+- Plakası olmayan araçlar için “Plakasız Araç Tanımı” alanı eklendi.
+- Örnek: Forklift, Römork, Atölye Aracı, Test Aracı.
+- Plaka boş bırakılırsa sistem otomatik PLakasız kayıt numarası üretir.
+- Servis kaydında plaka/tanım yazılarak da kayıtlı araca ulaşılabilir.
+
+
+## V7 Esnek Servis Kaydı Güncellemesi
+
+Servis kaydında artık tek alan çalışır:
+
+- Plaka
+- Plakasız araç tanımı
+- Müşteri/firma adı
+- Şahıs adı
+
+Yeni mantık:
+- Yazılan değer plakaysa direkt o araç bulunur.
+- Yazılan değer plakasız araç tanımıysa direkt o araç bulunur.
+- Yazılan değer müşteri/firma adıysa o müşterinin araçları kontrol edilir.
+- Müşteri/firma adına bağlı tek araç varsa otomatik o araca kaydeder.
+- Birden fazla araç varsa servis formunda seçim alanı açılır ve doğru araç seçilir.
+
+
+## V7 Servis Geçmişi Yazdır / PDF / WhatsApp Güncellemesi
+
+Eklenen özellikler:
+- Araç detayında servis geçmişi için Yazdır butonu.
+- Araç detayında PDF butonu.
+- Araç detayında WhatsApp paylaş butonu.
+- Araç listesinde hızlı Yazdır ve WP butonları.
+- Servis geçmişi çıktısında yapılan işlemler, geldiği KM, sonraki bakım KM, işçilik, parça, toplam ve notlar görünür.
+
+PDF Notu:
+Tarayıcı yazdır penceresi açılır. Hedef olarak “PDF olarak kaydet” seçilerek PDF alınır.

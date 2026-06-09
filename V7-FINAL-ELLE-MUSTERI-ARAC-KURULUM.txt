@@ -1,0 +1,20 @@
+Hiçkorkmaz Garaj V7 Final - Elle Müşteri/Firma Araç Ekleme
+
+Eklenen son özellik:
+- Araç eklerken müşteri/firma seçenek olarak çıkmaz.
+- Müşteri / Firma Adı elle yazılır.
+- İsim sistemde varsa ona bağlanır.
+- İsim yoksa otomatik yeni müşteri/firma kartı oluşturulur.
+- Plaka zorunlu değildir.
+- Plakası olmayan araçlar için Plakasız Araç Tanımı alanı vardır.
+- Örnek: Forklift, Römork, Atölye Aracı.
+- Servis kayıtlarındaki tüm son özellikler korunur:
+  Geldiği KM, Bir Sonraki Bakım KM, işçilik, parça, otomatik toplam, seçilebilir bakım işlemleri.
+
+Yükleme:
+1. ZIP dosyasını indir.
+2. ZIP'i aç.
+3. İçindeki dosyaları GitHub Pages yayın branch'ine yükle.
+4. Sende branch büyük ihtimalle v6-tasarim.
+5. Commit changes de.
+6. Siteyi Ctrl + F5 ile yenile.

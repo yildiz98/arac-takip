@@ -1,0 +1,19 @@
+Hiçkorkmaz Garaj V7 - Esnek Servis Kaydı
+
+Eklenen son özellik:
+Servis kayıtlarında tek alan:
+- Plaka / Araç Tanımı / Müşteri-Firma Adı
+
+Örnek kullanımlar:
+- 33 ABC 123 yazarsan plakayı bulur.
+- Forklift yazarsan plakasız araç tanımını bulur.
+- Ahmet Yılmaz yazarsan Ahmet Yılmaz'ın araçlarını bulur.
+- Tek aracı varsa otomatik kaydeder.
+- Birden fazla aracı varsa seçim alanı açılır.
+
+Yükleme:
+1. ZIP'i indir.
+2. ZIP'i aç.
+3. Dosyaları GitHub Pages yayın branch'ine yükle.
+4. Commit changes de.
+5. Siteyi Ctrl + F5 ile yenile.

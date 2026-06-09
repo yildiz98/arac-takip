@@ -1,0 +1,19 @@
+Hiçkorkmaz Garaj V7 - PDF / WhatsApp / Yazdır Güncellemesi
+
+Eklenen:
+- Servis geçmişi yazdırma.
+- PDF olarak kaydetme.
+- WhatsApp ile servis geçmişi paylaşma.
+- Yapılan işlemler çıktı içinde görünür.
+- Geldiği KM, sonraki bakım KM, işçilik, parça, toplam ve notlar çıktı içinde görünür.
+
+Kullanım:
+1. Araç detayına gir.
+2. Üstte Yazdır, PDF veya WhatsApp butonuna bas.
+3. PDF için açılan yazdır ekranında “PDF olarak kaydet” seç.
+
+Yükleme:
+1. ZIP'i indir.
+2. Dosyaları GitHub Pages yayın branch'ine yükle.
+3. Commit changes de.
+4. Siteyi Ctrl + F5 ile yenile.
