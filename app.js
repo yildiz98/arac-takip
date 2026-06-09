@@ -169,10 +169,10 @@ function findServiceTarget(query){
 }
 function getVehiclesByCustomer(customerId){ return db.vehicles.filter(x=>x.customerId===customerId); }
 function getServicesByVehicle(vehicleId){ return db.services.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
-function getPaymentsByVehicle(vehicleId){ return db.payments.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
-function vehicleTotal(vehicleId){ return getServicesByVehicle(vehicleId).reduce((t,x)=>t+Number(x.amount||0),0); }
-function vehiclePaid(vehicleId){ return getPaymentsByVehicle(vehicleId).reduce((t,x)=>t+Number(x.amount||0),0); }
-function vehicleDebt(vehicleId){ return vehicleTotal(vehicleId)-vehiclePaid(vehicleId); }
+function getPaymentsByVehicle(vehicleId){
+  return db.payments.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date)));
+}
+
 function customerTotal(customerId){ return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehicleTotal(v.id),0); }
 function customerPaid(customerId){
   return db.payments
@@ -529,7 +529,7 @@ function servicesTable(list){
   </tbody></table></div>`;
 }
 function paymentsTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Ödeme Tarihi</th><th>Şahıs/Firma</th><th>Plaka</th><th>Tutar</th><th>Notlar</th><th>İşlemi Yapan</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Ödeme Tarihi</th><th>Şahıs/Firma</th><th>Plaka</th><th>Tahsilat Türü</th><th>Tutar</th><th>Notlar</th><th>İşlemi Yapan</th></tr></thead><tbody>
   ${list.map(p=>{
     const v = getVehicle(p.vehicleId);
     const c = getCustomer(p.customerId);
@@ -538,11 +538,12 @@ function paymentsTable(list){
       <td>${p.date || "-"}</td>
       <td>${c?.name || "-"}</td>
       <td>${plateText}</td>
+      <td><span class="badge">${paymentTypeText(p)}</span></td>
       <td class="amount good">${money(p.amount)}</td>
       <td>${p.note || "-"}</td>
       <td>${p.createdBy || "-"}</td>
     </tr>`;
-  }).join("") || emptyRow(6)}
+  }).join("") || emptyRow(7)}
   </tbody></table></div>`;
 }
 function customerDebtTable(onlyDebt){
@@ -925,7 +926,7 @@ window.openModal = function(type){
     setTimeout(() => { bindServiceTotalPreview(); bindServiceTargetFinder(); }, 0);
   }
   if(type === "payment"){
-    document.getElementById("modalBody").innerHTML = `${field("Şahıs / Firma Adı","customerName","text","")}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Tahsilat elle atanır. Şahıs/firma sistemde varsa ona işlenir, yoksa otomatik oluşturulur. Plaka kayıtlıysa plaka borcundan da düşer; kayıtlı değilse müşteri/firma tahsilatı olarak kaydedilir.</p>`;
+    document.getElementById("modalBody").innerHTML = `${field("Şahıs / Firma Adı","customerName","text","")}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka varsa ödeme araç + cari hesaptan düşer. Plaka boşsa sadece şahıs/firma cari hesabından düşer.</p>`;
   }
   modal.showModal();
 };
@@ -1008,13 +1009,32 @@ modalForm.addEventListener("submit", function(e){
     db.services.push({ id:newId("s"), vehicleId:foundVehicle.id, date:obj.date, currentKm:currentKm, nextKm:Number(obj.nextKm || 0), items:selectedItems, title:obj.title, laborAmount:laborAmount, partsAmount:partsAmount, amount:totalAmount, note:obj.note, createdBy:activeUser?.email || "-", createdByRole:activeUser?.role || "-", createdAt:new Date().toISOString() });
   }
   if(modalType === "payment"){
-    const c = findOrCreateCustomerByName(obj.customerName, "");
-    const foundVehicle = obj.plate ? findVehicleByPlate(obj.plate) : null;
+    const typedCustomerName = safe(obj.customerName).trim();
+    const typedPlate = safe(obj.plate).trim();
+
+    let foundVehicle = typedPlate ? findVehicleByPlate(typedPlate) : null;
+    let c = null;
+
+    // Plaka varsa: araç sahibini bul, ödeme araç + cari hesaptan düşsün.
+    if(foundVehicle){
+      c = getCustomer(foundVehicle.customerId);
+    }
+
+    // Plaka yoksa veya plaka kayıtlı değilse: yazılan şahıs/firma adına cari ödeme kaydı.
+    if(!c){
+      if(!typedCustomerName){
+        alert("Plaka kayıtlı değilse Şahıs/Firma Adı yazman gerekir.");
+        return;
+      }
+      c = findOrCreateCustomerByName(typedCustomerName, "");
+    }
+
     db.payments.push({
       id:newId("p"),
       customerId:c.id,
       vehicleId:foundVehicle ? foundVehicle.id : "",
-      manualPlate:safe(obj.plate).toLocaleUpperCase("tr-TR"),
+      manualPlate:typedPlate ? typedPlate.toLocaleUpperCase("tr-TR") : "",
+      paymentType:foundVehicle ? "vehicle_customer" : "customer_only",
       date:obj.date,
       amount:Number(obj.amount||0),
       note:obj.note,

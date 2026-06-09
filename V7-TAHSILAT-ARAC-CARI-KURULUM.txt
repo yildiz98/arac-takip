@@ -1,0 +1,15 @@
+Hiçkorkmaz Garage V7 - Tahsilat Araç + Cari Mantığı
+
+Güncelleme:
+- Plaka varsa: ödeme araç borcundan + müşteri/firma cari hesabından düşer.
+- Plaka yoksa: ödeme sadece müşteri/firma cari hesabından düşer.
+- Tahsilat listesinde tür görünür:
+  Araç + Cari Hesap
+  Sadece Cari Hesap
+
+Yükleme:
+1. ZIP'i indir.
+2. ZIP'i aç.
+3. İçindeki dosyaları GitHub Pages yayın branch'ine yükle.
+4. Commit changes de.
+5. Siteyi Ctrl + F5 ile yenile.

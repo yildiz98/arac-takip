@@ -98,3 +98,22 @@ Tahsilat alanları:
 - Plaka kayıtlıysa ödeme plaka borcundan da düşer.
 - Plaka kayıtlı değilse ödeme müşteri/firma genel tahsilatı olarak kaydedilir.
 - Tahsilatı yapan kullanıcı kaydı tutulur.
+
+
+## Tahsilat Araç + Cari / Sadece Cari Mantığı
+
+Bu sürümde tahsilat mantığı şu şekilde güncellendi:
+
+1. Plaka yazılır ve plaka sistemde kayıtlıysa:
+   - Ödeme araç borcundan düşer.
+   - Aynı ödeme müşteri/firma cari toplamından da düşer.
+   - Tahsilat türü: Araç + Cari Hesap
+
+2. Plaka boş bırakılırsa:
+   - Ödeme sadece şahıs/firma cari hesabından düşer.
+   - Araç borçları değişmez.
+   - Tahsilat türü: Sadece Cari Hesap
+
+3. Plaka yazılır ama sistemde kayıtlı değilse:
+   - Şahıs/Firma adı zorunludur.
+   - Ödeme sadece cari hesap tahsilatı olarak kaydedilir.
