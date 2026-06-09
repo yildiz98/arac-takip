@@ -120,3 +120,9 @@ dialog::backdrop{background:rgba(0,0,0,.72)}#modalForm{padding:22px}
 @media(max-width:700px){
   .check-grid{grid-template-columns:1fr}
 }
+
+.field input[readonly]{
+  opacity:.85;
+  background:rgba(56,189,248,.08);
+  font-weight:900;
+}

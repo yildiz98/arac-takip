@@ -74,3 +74,25 @@ Yeni mantık:
 - Plaka kayıtlı değilse sistem uyarı verir.
 - Plaka kayıtlı değilse önce Araçlar bölümünden müşteri/firma adına araç eklenmelidir.
 - Servis geçmişinde yine müşteri/firma, plaka ve seçilen işlem kalemleri görünür.
+
+
+## V7 Final Professional Güncellemesi
+
+Son eklenen özellikler:
+
+- Servis kaydında plaka elle yazılır.
+- Plaka kayıtlıysa servis otomatik müşteri/firma altına kaydedilir.
+- Geldiği KM alanı eklendi.
+- Bir Sonraki Bakım KM alanı eklendi.
+- İşçilik Tutarı eklendi.
+- Parça Tutarı eklendi.
+- Toplam tutar işçilik + parça olarak otomatik hesaplanır.
+- Araç kartında Son KM görünür.
+- Araç kartında Bir Sonraki Bakım KM görünür.
+- Araç kartında Kalan KM görünür.
+- Dashboard'da Yaklaşan Bakım / KM Kontrol listesi vardır.
+- Girilen KM önceki servis KM'sinden düşükse uyarı verir.
+- Servis geçmişinde KM, seçilen işlemler, işçilik, parça ve toplam tutar görünür.
+
+Servis işlem seçenekleri:
+Motor Yağı, Yağ Filtresi, Hava Filtresi, Polen Filtresi, Yakıt / Mazot Filtresi, Ön Balata, Arka Balata, Fren Diski, Fren Hidroliği, Antifriz, Akü, Buji, Triger Seti, Debriyaj, Şanzıman Yağı, Rot Balans, Lastik, Klima Gazı, Genel Kontrol, Elektrik Arıza, Kaporta / Boya, Diğer.

@@ -11,9 +11,9 @@ const seed = {
     { id:"v_demo_3", customerId:"c_demo_2", plate:"33 FİL 001", brand:"Mercedes", model:"Sprinter", year:"2021", note:"Şirket aracı" }
   ],
   services: [
-    { id:"s_demo_1", vehicleId:"v_demo_1", date:"2026-06-09", title:"Yağ bakımı", amount:5000, nextDate:"2026-09-09", note:"Yağ + filtre değişti" },
-    { id:"s_demo_2", vehicleId:"v_demo_2", date:"2026-06-01", title:"Fren bakımı", amount:2500, nextDate:"2026-08-01", note:"Balata değişti" },
-    { id:"s_demo_3", vehicleId:"v_demo_3", date:"2026-05-28", title:"Genel bakım", amount:12000, nextDate:"2026-07-28", note:"Filo bakım kaydı" }
+    { id:"s_demo_1", vehicleId:"v_demo_1", date:"2026-06-09", items:["Motor Yağı","Yağ Filtresi"], title:"Yağ bakımı", currentKm:125000, nextKm:135000, laborAmount:1000, partsAmount:4000, amount:5000, note:"Yağ + filtre değişti" },
+    { id:"s_demo_2", vehicleId:"v_demo_2", date:"2026-06-01", items:["Ön Balata"], title:"Fren bakımı", currentKm:98000, nextKm:108000, laborAmount:500, partsAmount:2000, amount:2500, note:"Balata değişti" },
+    { id:"s_demo_3", vehicleId:"v_demo_3", date:"2026-05-28", items:["Genel Kontrol","Motor Yağı","Hava Filtresi"], title:"Genel bakım", currentKm:210000, nextKm:220000, laborAmount:2500, partsAmount:9500, amount:12000, note:"Filo bakım kaydı" }
   ],
   payments: [
     { id:"p_demo_1", customerId:"c_demo_1", vehicleId:"v_demo_1", date:"2026-06-09", amount:2000, note:"Nakit ödeme" },
@@ -109,6 +109,16 @@ function customerTotal(customerId){ return getVehiclesByCustomer(customerId).red
 function customerPaid(customerId){ return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehiclePaid(v.id),0); }
 function customerDebt(customerId){ return customerTotal(customerId)-customerPaid(customerId); }
 function lastServiceDate(vehicleId){ return getServicesByVehicle(vehicleId)[0]?.date || "-"; }
+function lastServiceRecord(vehicleId){ return getServicesByVehicle(vehicleId)[0] || null; }
+function vehicleLastKm(vehicleId){ return Number(lastServiceRecord(vehicleId)?.currentKm || 0); }
+function vehicleNextKm(vehicleId){ return Number(lastServiceRecord(vehicleId)?.nextKm || 0); }
+function kmFormat(n){ return Number(n||0) ? Number(n).toLocaleString("tr-TR") + " km" : "-"; }
+function remainingKm(vehicleId){
+  const next = vehicleNextKm(vehicleId);
+  const current = vehicleLastKm(vehicleId);
+  if(!next || !current) return null;
+  return next - current;
+}
 
 const pages = {
   dashboard:"Dashboard",
@@ -151,7 +161,11 @@ function renderDashboard(){
   const totalDebt = totalRevenue - totalPaid;
   const todayPaid = db.payments.filter(p=>p.date===today()).reduce((t,p)=>t+Number(p.amount||0),0);
   const recentServices = db.services.slice().sort((a,b)=>safe(b.date).localeCompare(safe(a.date))).slice(0,8);
-  const upcoming = db.services.filter(s=>s.nextDate).sort((a,b)=>safe(a.nextDate).localeCompare(safe(b.nextDate))).slice(0,8);
+  const upcoming = db.vehicles
+    .filter(v => vehicleNextKm(v.id))
+    .map(v => ({ vehicle:v, currentKm:vehicleLastKm(v.id), nextKm:vehicleNextKm(v.id), remaining:remainingKm(v.id) }))
+    .sort((a,b)=>(a.remaining ?? 999999999)-(b.remaining ?? 999999999))
+    .slice(0,8);
 
   document.getElementById("dashboard").innerHTML = `
     <div class="grid stats">
@@ -165,7 +179,7 @@ function renderDashboard(){
       <div class="panel"><div class="panel-head"><h3>Son Servis Kayıtları</h3><button class="small-btn" onclick="openPage('services')">Tümü</button></div>${servicesTable(recentServices)}</div>
       <div>
         <div class="panel"><div class="panel-head"><h3>Alacaklı Müşteriler</h3><button class="small-btn" onclick="openPage('debts')">Borç Takibi</button></div>${customerDebtTable(true)}</div>
-        <div class="panel"><div class="panel-head"><h3>Yaklaşan Bakım / Kontrol</h3></div>${upcomingTable(upcoming)}</div>
+        <div class="panel"><div class="panel-head"><h3>Yaklaşan Bakım / KM Kontrol</h3></div>${upcomingTable(upcoming)}</div>
       </div>
     </div>`;
 }
@@ -201,7 +215,7 @@ window.filterServices = function(){
   let list = db.services.filter(s=>{
     const v = getVehicle(s.vehicleId);
     const c = getCustomer(v?.customerId);
-    return (!date || s.date === date) && (!txt || norm(`${s.title} ${serviceItemsText(s)} ${s.note} ${v?.plate} ${c?.name}`).includes(txt));
+    return (!date || s.date === date) && (!txt || norm(`${s.title} ${serviceItemsText(s)} ${s.note} ${s.currentKm} ${s.nextKm} ${v?.plate} ${c?.name}`).includes(txt));
   }).sort((a,b)=>safe(b.date).localeCompare(safe(a.date)));
   document.getElementById("serviceList").innerHTML = servicesTable(list);
 }
@@ -243,8 +257,8 @@ function vehiclesTable(list){
   </tbody></table></div>`;
 }
 function servicesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Seçilen İşlemler</th><th>Ek Başlık</th><th>Tutar</th><th>Sonraki Kontrol</th><th>Not</th></tr></thead><tbody>
-  ${list.map(s=>{const v=getVehicle(s.vehicleId); const c=getCustomer(v?.customerId); return `<tr><td>${s.date || "-"}</td><td>${v ? `<button class="small-btn" onclick="openVehicle('${v.id}')">${v.plate}</button>` : "-"}</td><td>${c?.name || "-"}</td><td>${serviceItemsText(s)}</td><td>${s.title || "-"}</td><td class="amount">${money(s.amount)}</td><td>${s.nextDate || "-"}</td><td>${s.note || "-"}</td></tr>`}).join("") || emptyRow(8)}
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th></tr></thead><tbody>
+  ${list.map(s=>{const v=getVehicle(s.vehicleId); const c=getCustomer(v?.customerId); return `<tr><td>${s.date || "-"}</td><td>${v ? `<button class="small-btn" onclick="openVehicle('${v.id}')">${v.plate}</button>` : "-"}</td><td>${c?.name || "-"}</td><td>${kmFormat(s.currentKm)}</td><td>${kmFormat(s.nextKm)}</td><td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td><td class="amount">${money(s.laborAmount || 0)}</td><td class="amount">${money(s.partsAmount || 0)}</td><td class="amount">${money(s.amount)}</td><td>${s.note || "-"}</td></tr>`}).join("") || emptyRow(10)}
   </tbody></table></div>`;
 }
 function paymentsTable(list){
@@ -260,8 +274,8 @@ function customerDebtTable(onlyDebt){
   </tbody></table></div>`;
 }
 function upcomingTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(s=>{const v=getVehicle(s.vehicleId); return `<tr><td>${s.nextDate}</td><td>${v?.plate || "-"}</td><td>${s.title || "-"}</td></tr>`}).join("") || emptyRow(3)}
+  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Son KM</th><th>Sonraki Bakım KM</th><th>Kalan KM</th></tr></thead><tbody>
+  ${list.map(x=>`<tr><td><button class="small-btn" onclick="openVehicle('${x.vehicle.id}')">${x.vehicle.plate}</button></td><td>${kmFormat(x.currentKm)}</td><td>${kmFormat(x.nextKm)}</td><td class="amount ${x.remaining <= 1000 ? "bad" : "warn"}">${x.remaining === null ? "-" : kmFormat(x.remaining)}</td></tr>`).join("") || emptyRow(4)}
   </tbody></table></div>`;
 }
 function emptyRow(cols){ return `<tr><td colspan="${cols}" style="color:var(--muted)">Kayıt bulunamadı.</td></tr>`; }
@@ -292,6 +306,7 @@ window.openVehicle = function(vehicleId){
     </div>
     <div class="customer-card">
       <div class="info-box"><span>Plaka</span><b>${v.plate}</b></div><div class="info-box"><span>Sahibi / Firma</span><b>${c?.name || "-"}</b></div><div class="info-box"><span>Marka model</span><b>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</b></div>
+      <div class="info-box"><span>Son KM</span><b>${kmFormat(vehicleLastKm(v.id))}</b></div><div class="info-box"><span>Bir Sonraki Bakım KM</span><b>${kmFormat(vehicleNextKm(v.id))}</b></div><div class="info-box"><span>Kalan KM</span><b class="${remainingKm(v.id) !== null && remainingKm(v.id) <= 1000 ? "bad" : "warn"}">${remainingKm(v.id) === null ? "-" : kmFormat(remainingKm(v.id))}</b></div>
       <div class="info-box"><span>Toplam borç</span><b class="${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</b></div><div class="info-box"><span>Toplam işlem</span><b>${money(vehicleTotal(v.id))}</b></div><div class="info-box"><span>Toplam tahsilat</span><b class="good">${money(vehiclePaid(v.id))}</b></div>
     </div>
     <div class="grid two"><div class="panel"><h3>Servis Geçmişi</h3>${servicesTable(getServicesByVehicle(v.id))}</div><div class="panel"><h3>Tahsilat Geçmişi</h3>${paymentsTable(getPaymentsByVehicle(v.id))}</div></div>
@@ -368,13 +383,28 @@ window.openModal = function(type){
     document.getElementById("modalBody").innerHTML = `${selectField("Sahibi / Firma","customerId",customerOptions)}${field("Plaka","plate")}${field("Marka","brand","text","",false)}${field("Model","model","text","",false)}${field("Yıl","year","number","",false)}${textareaField("Araç Notu","note")}`;
   }
   if(type === "service"){
-    document.getElementById("modalBody").innerHTML = `${field("Plaka Yaz","plate","text","")}${field("Servis Tarihi","date","date",today())}${serviceItemCheckboxes()}${field("Ek İşlem Başlığı / Açıklama","title","text","",false)}${field("Tutar","amount","number")}${field("Sonraki Bakım / Kontrol Tarihi","nextDate","date","",false)}${textareaField("Not","note")}<p class="notice">Plaka kayıtlı araçlarda varsa servis otomatik o müşteri/firma altına işlenir. Plaka kayıtlı değilse önce Araçlar bölümünden aracı eklemen gerekir.</p>`;
+    document.getElementById("modalBody").innerHTML = `${field("Plaka Yaz","plate","text","")}${field("Servis Tarihi","date","date",today())}${field("Geldiği KM","currentKm","number")}${field("Bir Sonraki Bakım KM","nextKm","number","",false)}${serviceItemCheckboxes()}${field("Ek İşlem Başlığı / Açıklama","title","text","",false)}${field("İşçilik Tutarı","laborAmount","number","0",false)}${field("Parça Tutarı","partsAmount","number","0",false)}<div class="field"><label>Toplam Tutar</label><input id="serviceTotalPreview" type="text" value="0 TL" readonly></div>${textareaField("Not","note")}<p class="notice">Plaka kayıtlı araçlarda varsa servis otomatik o müşteri/firma altına işlenir. Toplam tutar işçilik + parça olarak otomatik hesaplanır.</p>`;
+    setTimeout(bindServiceTotalPreview, 0);
   }
   if(type === "payment"){
     document.getElementById("modalBody").innerHTML = `${selectField("Plaka","vehicleId",vehicleOptions)}${field("Tahsilat Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}`;
   }
   modal.showModal();
 };
+
+function bindServiceTotalPreview(){
+  const labor = modalForm.querySelector('input[name="laborAmount"]');
+  const parts = modalForm.querySelector('input[name="partsAmount"]');
+  const out = document.getElementById("serviceTotalPreview");
+  if(!labor || !parts || !out) return;
+  const update = () => {
+    const total = Number(labor.value || 0) + Number(parts.value || 0);
+    out.value = money(total);
+  };
+  labor.addEventListener("input", update);
+  parts.addEventListener("input", update);
+  update();
+}
 
 modalForm.addEventListener("submit", function(e){
   e.preventDefault();
@@ -389,8 +419,17 @@ modalForm.addEventListener("submit", function(e){
       alert("Bu plaka kayıtlı araçlarda bulunamadı. Önce Araçlar bölümünden plakayı müşteri/firma adına ekleyin.");
       return;
     }
+    const lastKm = vehicleLastKm(foundVehicle.id);
+    const currentKm = Number(obj.currentKm || 0);
+    if(lastKm && currentKm && currentKm < lastKm){
+      const ok = confirm("Girilen KM önceki servis kaydından düşük görünüyor. Yine de kaydedilsin mi?");
+      if(!ok) return;
+    }
     const selectedItems = fd.getAll("items");
-    db.services.push({ id:newId("s"), vehicleId:foundVehicle.id, date:obj.date, items:selectedItems, title:obj.title, amount:Number(obj.amount||0), nextDate:obj.nextDate, note:obj.note });
+    const laborAmount = Number(obj.laborAmount || 0);
+    const partsAmount = Number(obj.partsAmount || 0);
+    const totalAmount = laborAmount + partsAmount;
+    db.services.push({ id:newId("s"), vehicleId:foundVehicle.id, date:obj.date, currentKm:currentKm, nextKm:Number(obj.nextKm || 0), items:selectedItems, title:obj.title, laborAmount:laborAmount, partsAmount:partsAmount, amount:totalAmount, note:obj.note });
   }
   if(modalType === "payment"){
     const v = getVehicle(obj.vehicleId);

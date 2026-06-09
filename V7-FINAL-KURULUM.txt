@@ -1,0 +1,29 @@
+Hiçkorkmaz Garaj V7 Final Professional Kurulum
+
+Bu paket son istenen özellikleri içerir:
+- Plaka elle yazılır.
+- Kayıtlı plakaysa otomatik müşteri/firma altına kaydeder.
+- Geldiği KM.
+- Bir Sonraki Bakım KM.
+- Seçilebilir servis işlemleri.
+- İşçilik Tutarı.
+- Parça Tutarı.
+- Otomatik toplam.
+- Araç kartında Son KM / Sonraki Bakım KM / Kalan KM.
+- Dashboard'da KM bazlı yaklaşan bakım listesi.
+- Global arama.
+- Müşteri/firma toplam borcu.
+- Plaka bazlı borç.
+
+Yükleme:
+1. ZIP dosyasını indir.
+2. ZIP'i aç.
+3. İçindeki tüm dosyaları GitHub Pages'in yayın yaptığı branch'e yükle.
+   Sende önceki ayarda branch: v6-tasarim görünüyordu.
+4. Commit changes de.
+5. 1-2 dakika bekle.
+6. Siteyi Ctrl + F5 ile yenile.
+
+Not:
+Mevcut kayıtlar tarayıcı localStorage içinde saklanır. GitHub'a dosya yüklemek kayıtları silmez.
+Yine de Ayarlar > Verileri Yedekle kısmından yedek alman önerilir.
