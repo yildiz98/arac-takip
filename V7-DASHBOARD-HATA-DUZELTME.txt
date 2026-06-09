@@ -1,0 +1,16 @@
+V7 Dashboard Hata Düzeltme
+
+Düzeltilen hata:
+- Console'da görünen `vehicleTotal is not defined` hatası giderildi.
+- Dashboard boş kalma sorunu düzeltildi.
+
+Yükleme:
+1. ZIP'i indir.
+2. İçindeki dosyaları GitHub Pages yayın branch'ine yükle.
+3. Commit changes de.
+4. Siteyi Ctrl + F5 ile yenile.
+
+Gerekirse:
+F12 > Console:
+localStorage.removeItem("hickorkmaz_garaj_v7_data");
+location.reload();

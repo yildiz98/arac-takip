@@ -1,0 +1,20 @@
+V7 Dashboard Fix V2
+
+Bu sürümde hesaplama fonksiyonları app.js içine net şekilde yeniden eklendi:
+- vehicleTotal
+- vehiclePaid
+- vehicleDebt
+- customerTotal
+- customerPaid
+- customerDebt
+- paymentTypeText
+
+Yükleme:
+1. ZIP'i indir.
+2. GitHub Pages'in yayın yaptığı branch'e tüm dosyaları yükle.
+3. Commit changes de.
+4. Siteyi açınca Ctrl + F5 yap.
+5. Hâlâ eski hata görünürse tarayıcı cache temizle.
+
+Önemli:
+GitHub'a yükledikten sonra app.js dosyasının gerçekten değiştiğinden emin ol.
