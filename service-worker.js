@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arac-servis-v5-plaka-cari';
+const CACHE_NAME = 'arac-servis-v7-cache-fix-1781018881';
 const ASSETS = [
   './',
   './index.html',

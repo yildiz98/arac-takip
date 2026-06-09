@@ -105,3 +105,7 @@ Bu sürümde tahsilat mantığı ayrıldı:
 
 - Plaka yazılır ama sistemde kayıtlı değilse:
   - Şahıs/firma adı varsa cari hesap tahsilatı olarak kaydedilir.
+
+
+## V7 Cache + Cari Fix
+vehicleNextKm cache hatası ve Müşteri/Firma cari tahsilat düşmeme sorunu düzeltilmiştir.
