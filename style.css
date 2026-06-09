@@ -647,3 +647,20 @@ td,th{
     min-height:46px!important;
   }
 }
+
+
+/* Hiçkorkmaz Garage logo mavisi hızlı işlem butonları */
+.quick-actions .action{
+    background:#063080 !important;
+    color:#ffffff !important;
+    border:none !important;
+    font-weight:700 !important;
+    border-radius:14px !important;
+}
+.quick-actions .action:hover{
+    background:#0B4DB3 !important;
+}
+#btnPayment{
+    background:#063080 !important;
+    color:#ffffff !important;
+}
