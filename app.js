@@ -615,22 +615,48 @@ function canOutput(){
 function serviceSinglePlainText(serviceId){
   const s = db.services.find(x => x.id === serviceId);
   if(!s) return "Servis kaydı bulunamadı.";
+
   const v = getVehicle(s.vehicleId);
   const c = getCustomer(v?.customerId);
-  const vehicleName = `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
-  let text = `Hiçkorkmaz Garaj - Servis Kaydı\n\n`;
-  text += `Müşteri/Firma: ${c?.name || "-"}\n`;
-  text += `Araç: ${vehicleName}\n`;
-  text += `Marka/Model: ${[v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-"}\n`;
-  text += `Tarih: ${s.date || "-"}\n`;
-  text += `Geldiği KM: ${kmFormat(s.currentKm)}\n`;
-  text += `Bir Sonraki Bakım KM: ${kmFormat(s.nextKm)}\n`;
-  text += `Yapılan İşlemler: ${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n`;
+
+  const vehicleName =
+    `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
+
+  const vehicleModel =
+    [v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-";
+
+  let text = `🔧 HİÇKORKMAZ GARAJ\n`;
+  text += `━━━━━━━━━━━━━━━\n\n`;
+
+  text += `👤 Müşteri/Firma\n`;
+  text += `${c?.name || "-"}\n\n`;
+
+  text += `🚗 Araç\n`;
+  text += `${vehicleName}\n`;
+  text += `${vehicleModel}\n\n`;
+
+  text += `📅 Servis Tarihi: ${s.date || "-"}\n`;
+  text += `⏱️ KM: ${kmFormat(s.currentKm)}\n`;
+  text += `🔜 Sonraki Bakım: ${kmFormat(s.nextKm)}\n\n`;
+
+  text += `✅ Yapılan İşlemler\n`;
+  text += `${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n\n`;
+
+  text += `💰 Ücret Bilgileri\n`;
   text += `İşçilik: ${money(s.laborAmount || 0)}\n`;
   text += `Parça: ${money(s.partsAmount || 0)}\n`;
-  text += `Toplam: ${money(s.amount)}\n`;
-  text += `Not: ${s.note || "-"}\n` +
-    `İşlemi Yapan: ${s.createdBy || "-"}\n`;
+  text += `Toplam: ${money(s.amount)}\n\n`;
+
+  if(s.note){
+    text += `📝 Not\n${s.note}\n\n`;
+  }
+
+  text += `👨‍🔧 İşlemi Yapan\n`;
+  text += `${s.createdBy || "-"}\n\n`;
+
+  text += `Teşekkür ederiz.\n`;
+  text += `Hiçkorkmaz Garaj`;
+
   return text;
 }
 
