@@ -262,3 +262,17 @@ Yeni personel eklemek için:
 1. Firebase > Authentication > Users > Add user.
 2. E-posta/şifre oluştur.
 3. firebase-config.js içindeki PERSONEL_EMAILS listesine e-postayı ekle.
+
+
+## V7 Mavi/Beyaz Logo Tasarım Güncellemesi
+
+Bu sürümde sistem Hiçkorkmaz Garage kurumsal renklerine göre güncellendi.
+
+Eklenenler:
+- Mavi/beyaz tema.
+- Gönderilen Hiçkorkmaz Garage logosu.
+- Sol menüde logo kullanımı.
+- Giriş ekranında logo kullanımı.
+- Üst başlıkta logo kullanımı.
+- PWA ikonları: 192x192 ve 512x512.
+- Mobil görünümde mavi/beyaz uyum.
