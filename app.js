@@ -1146,6 +1146,8 @@ window.importData = function(event){
   reader.readAsText(file);
 };
 window.resetAllData = function(){
+  alert("Yeni kod çalıştı");
+
   if(!requireAdmin()) return;
 
   const password = prompt("Silme şifresini giriniz:");
@@ -1154,6 +1156,40 @@ window.resetAllData = function(){
     alert("Hatalı şifre!");
     return;
   }
+
+  const ok = confirm(
+    "DİKKAT!\n\nTüm müşteri, araç, servis ve tahsilat kayıtları silinecek.\n\nDevam etmek istiyor musun?"
+  );
+
+  if(!ok) return;
+
+  db = {
+    customers: [],
+    vehicles: [],
+    services: [],
+    payments: []
+  };
+
+  persist();
+  alert("Tüm veriler silindi.");
+};
+
+  const ok = confirm(
+    "DİKKAT!\n\nTüm müşteri, araç, servis ve tahsilat kayıtları silinecek.\n\nDevam etmek istiyor musun?"
+  );
+
+  if(!ok) return;
+
+  db = {
+    customers: [],
+    vehicles: [],
+    services: [],
+    payments: []
+  };
+
+  persist();
+  alert("Tüm veriler silindi.");
+};
 
   const ok = confirm(
     "DİKKAT!\n\nTüm müşteri, araç, servis ve tahsilat kayıtları silinecek.\n\nDevam etmek istiyor musun?"
