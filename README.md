@@ -112,3 +112,20 @@ Yeni mantık:
 - Örnek: Forklift, Römork, Atölye Aracı, Test Aracı.
 - Plaka boş bırakılırsa sistem otomatik PLakasız kayıt numarası üretir.
 - Servis kaydında plaka/tanım yazılarak da kayıtlı araca ulaşılabilir.
+
+
+## V7 Esnek Servis Kaydı Güncellemesi
+
+Servis kaydında artık tek alan çalışır:
+
+- Plaka
+- Plakasız araç tanımı
+- Müşteri/firma adı
+- Şahıs adı
+
+Yeni mantık:
+- Yazılan değer plakaysa direkt o araç bulunur.
+- Yazılan değer plakasız araç tanımıysa direkt o araç bulunur.
+- Yazılan değer müşteri/firma adıysa o müşterinin araçları kontrol edilir.
+- Müşteri/firma adına bağlı tek araç varsa otomatik o araca kaydeder.
+- Birden fazla araç varsa servis formunda seçim alanı açılır ve doğru araç seçilir.

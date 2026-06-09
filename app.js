@@ -62,6 +62,14 @@ function serviceItemCheckboxes(){
   </div>`;
 }
 
+function serviceTargetOptions(){
+  return db.vehicles.map(v => {
+    const c = getCustomer(v.customerId);
+    const label = `${v.noPlateName ? v.noPlateName + " / " : ""}${v.plate} - ${c?.name || "-"} ${v.brand || ""} ${v.model || ""}`.trim();
+    return `<option value="${v.id}">${label}</option>`;
+  }).join("");
+}
+
 function loadData(){
   const raw = localStorage.getItem(STORE_KEY);
   if(!raw){
@@ -110,6 +118,34 @@ function findVehicleByPlate(plate){
   const target = normalizePlate(plate);
   if(!target) return null;
   return db.vehicles.find(v => normalizePlate(v.plate) === target || normalizePlate(v.noPlateName) === target);
+}
+
+function findServiceTarget(query){
+  const q = norm(query);
+  const qp = normalizePlate(query);
+  if(!q) return { status:"empty", vehicles:[] };
+
+  const exactVehicle = db.vehicles.find(v =>
+    normalizePlate(v.plate) === qp ||
+    normalizePlate(v.noPlateName) === qp
+  );
+  if(exactVehicle) return { status:"single", vehicle:exactVehicle, vehicles:[exactVehicle] };
+
+  const matchingVehicles = db.vehicles.filter(v => {
+    const c = getCustomer(v.customerId);
+    return norm(`${v.plate} ${v.noPlateName} ${v.brand} ${v.model} ${c?.name} ${c?.phone}`).includes(q);
+  });
+
+  if(matchingVehicles.length === 1) return { status:"single", vehicle:matchingVehicles[0], vehicles:matchingVehicles };
+  if(matchingVehicles.length > 1) return { status:"multiple", vehicles:matchingVehicles };
+
+  const matchingCustomers = db.customers.filter(c => norm(`${c.name} ${c.phone} ${c.type}`).includes(q));
+  const customerVehicles = matchingCustomers.flatMap(c => getVehiclesByCustomer(c.id));
+
+  if(customerVehicles.length === 1) return { status:"single", vehicle:customerVehicles[0], vehicles:customerVehicles };
+  if(customerVehicles.length > 1) return { status:"multiple", vehicles:customerVehicles };
+
+  return { status:"none", vehicles:[] };
 }
 function getVehiclesByCustomer(customerId){ return db.vehicles.filter(x=>x.customerId===customerId); }
 function getServicesByVehicle(vehicleId){ return db.services.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
@@ -395,8 +431,8 @@ window.openModal = function(type){
     document.getElementById("modalBody").innerHTML = `${field("Müşteri / Firma Adı","customerName","text","")}${field("Telefon","customerPhone","text","",false)}${field("Plaka","plate","text","",false)}${field("Plakasız Araç Tanımı","noPlateName","text","",false)}${field("Marka","brand","text","",false)}${field("Model","model","text","",false)}${field("Yıl","year","number","",false)}${textareaField("Araç Notu","note")}<p class="notice">Plaka varsa yaz. Plakası olmayan araçlarda Plakasız Araç Tanımı alanına örnek olarak “Forklift”, “Römork”, “Atölye Aracı” yazabilirsin. Müşteri/firma sistemde yoksa otomatik oluşturulur.</p>`;
   }
   if(type === "service"){
-    document.getElementById("modalBody").innerHTML = `${field("Plaka Yaz","plate","text","")}${field("Servis Tarihi","date","date",today())}${field("Geldiği KM","currentKm","number")}${field("Bir Sonraki Bakım KM","nextKm","number","",false)}${serviceItemCheckboxes()}${field("Ek İşlem Başlığı / Açıklama","title","text","",false)}${field("İşçilik Tutarı","laborAmount","number","0",false)}${field("Parça Tutarı","partsAmount","number","0",false)}<div class="field"><label>Toplam Tutar</label><input id="serviceTotalPreview" type="text" value="0 TL" readonly></div>${textareaField("Not","note")}<p class="notice">Plaka kayıtlı araçlarda varsa servis otomatik o müşteri/firma altına işlenir. Toplam tutar işçilik + parça olarak otomatik hesaplanır.</p>`;
-    setTimeout(bindServiceTotalPreview, 0);
+    document.getElementById("modalBody").innerHTML = `${field("Plaka / Araç Tanımı / Müşteri-Firma Adı","serviceTarget","text","")}${field("Servis Tarihi","date","date",today())}${field("Geldiği KM","currentKm","number")}${field("Bir Sonraki Bakım KM","nextKm","number","",false)}${serviceItemCheckboxes()}${field("Ek İşlem Başlığı / Açıklama","title","text","",false)}${field("İşçilik Tutarı","laborAmount","number","0",false)}${field("Parça Tutarı","partsAmount","number","0",false)}<div class="field"><label>Toplam Tutar</label><input id="serviceTotalPreview" type="text" value="0 TL" readonly></div><div id="serviceTargetChoice" class="hidden">${selectField("Birden fazla araç bulunduysa seç","manualVehicleId",serviceTargetOptions())}</div>${textareaField("Not","note")}<p class="notice">Plaka, plakasız araç tanımı veya müşteri/firma adı yazabilirsin. Tek araç bulunursa otomatik kaydeder. Birden fazla araç varsa aşağıdan doğru aracı seçebilirsin.</p>`;
+    setTimeout(() => { bindServiceTotalPreview(); bindServiceTargetFinder(); }, 0);
   }
   if(type === "payment"){
     document.getElementById("modalBody").innerHTML = `${selectField("Plaka","vehicleId",vehicleOptions)}${field("Tahsilat Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}`;
@@ -418,6 +454,29 @@ function bindServiceTotalPreview(){
   update();
 }
 
+function bindServiceTargetFinder(){
+  const input = modalForm.querySelector('input[name="serviceTarget"]');
+  const choiceWrap = document.getElementById("serviceTargetChoice");
+  const select = modalForm.querySelector('select[name="manualVehicleId"]');
+  if(!input || !choiceWrap || !select) return;
+
+  const update = () => {
+    const result = findServiceTarget(input.value);
+    if(result.status === "multiple"){
+      select.innerHTML = result.vehicles.map(v => {
+        const c = getCustomer(v.customerId);
+        const label = `${v.noPlateName ? v.noPlateName + " / " : ""}${v.plate} - ${c?.name || "-"} ${v.brand || ""} ${v.model || ""}`.trim();
+        return `<option value="${v.id}">${label}</option>`;
+      }).join("");
+      choiceWrap.classList.remove("hidden");
+    }else{
+      choiceWrap.classList.add("hidden");
+    }
+  };
+  input.addEventListener("input", update);
+  update();
+}
+
 modalForm.addEventListener("submit", function(e){
   e.preventDefault();
   const fd = new FormData(modalForm);
@@ -431,17 +490,27 @@ modalForm.addEventListener("submit", function(e){
     db.vehicles.push({ id:newId("v"), customerId:c.id, plate:plateText, noPlateName:noPlateName, brand:obj.brand, model:obj.model, year:obj.year, note:obj.note });
   }
   if(modalType === "service"){
-    const foundVehicle = findVehicleByPlate(obj.plate);
+    const result = findServiceTarget(obj.serviceTarget);
+    let foundVehicle = null;
+
+    if(result.status === "single"){
+      foundVehicle = result.vehicle;
+    }else if(result.status === "multiple"){
+      foundVehicle = getVehicle(obj.manualVehicleId);
+    }
+
     if(!foundVehicle){
-      alert("Bu plaka kayıtlı araçlarda bulunamadı. Önce Araçlar bölümünden plakayı müşteri/firma adına ekleyin.");
+      alert("Araç bulunamadı. Plaka, plakasız araç tanımı veya müşteri/firma adını kontrol edin. Gerekirse önce Araçlar bölümünden aracı ekleyin.");
       return;
     }
+
     const lastKm = vehicleLastKm(foundVehicle.id);
     const currentKm = Number(obj.currentKm || 0);
     if(lastKm && currentKm && currentKm < lastKm){
       const ok = confirm("Girilen KM önceki servis kaydından düşük görünüyor. Yine de kaydedilsin mi?");
       if(!ok) return;
     }
+
     const selectedItems = fd.getAll("items");
     const laborAmount = Number(obj.laborAmount || 0);
     const partsAmount = Number(obj.partsAmount || 0);
