@@ -430,13 +430,13 @@ function renderDashboard(){
     .sort((a,b)=>(a.remaining ?? 999999999)-(b.remaining ?? 999999999))
     .slice(0,8);
 
-  document.getElementById("dashboard").innerHTML = `
+ document.getElementById("dashboard").innerHTML = `
     <div class="grid stats">
-      ${stat("Toplam Araç", db.vehicles.length)}
-      ${stat("Toplam Müşteri/Firma", db.customers.length)}
-      ${stat("Toplam Alacak", money(totalDebt), totalDebt>0?"bad":"good")}
-      ${stat("Toplam Ciro", money(totalRevenue), "good")}
-      ${stat("Bugünkü Tahsilat", money(todayPaid), "good")}
+      ${stat('<i class="fa-solid fa-car"></i> Toplam Araç', db.vehicles.length)}
+      ${stat('<i class="fa-solid fa-user-group"></i> Toplam Müşteri/Firma', db.customers.length)}
+      ${stat('<i class="fa-solid fa-wallet"></i> Toplam Alacak', money(totalDebt), totalDebt>0?"bad":"good")}
+      ${stat('<i class="fa-solid fa-chart-line"></i> Toplam Ciro', money(totalRevenue), "good")}
+      ${stat('<i class="fa-solid fa-money-bill-wave"></i> Bugünkü Tahsilat', money(todayPaid), "good")}
     </div>
     <div class="grid two">
       <div class="panel"><div class="panel-head"><h3>Son Servis Kayıtları</h3><button class="small-btn" onclick="openPage('services')">Tümü</button></div>${servicesTable(recentServices)}</div>
