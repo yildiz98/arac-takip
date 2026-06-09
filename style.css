@@ -600,3 +600,50 @@ td,th{
     background:#fff!important;
   }
 }
+
+
+/* V7 Final Kurumsal - Belirgin Hızlı İşlem Butonları */
+.quick-actions{
+  background:rgba(255,255,255,.97)!important;
+  border:1px solid #c9d8f0!important;
+  box-shadow:0 14px 38px rgba(6,48,128,.22)!important;
+}
+.quick-actions .action{
+  background:linear-gradient(135deg,#0b4db3,#063080)!important;
+  color:#fff!important;
+  border-color:#063080!important;
+  font-weight:900!important;
+  box-shadow:0 8px 20px rgba(6,48,128,.28)!important;
+}
+.quick-actions .action:hover{
+  background:linear-gradient(135deg,#164eae,#061b49)!important;
+  transform:translateY(-1px);
+}
+.quick-actions .action.primary{
+  background:linear-gradient(135deg,#063080,#061b49)!important;
+  color:#fff!important;
+}
+#btnPayment{
+  background:linear-gradient(135deg,#16a34a,#15803d)!important;
+  border-color:#15803d!important;
+}
+.danger-btn{
+  background:linear-gradient(135deg,#dc2626,#991b1b)!important;
+  color:#fff!important;
+  border-color:#991b1b!important;
+}
+.header{
+  align-items:center!important;
+}
+.header-brand-logo{
+  box-shadow:0 8px 20px rgba(6,48,128,.18);
+}
+.brand-img{
+  box-shadow:0 10px 24px rgba(0,0,0,.22);
+}
+@media(max-width:820px){
+  .quick-actions .action{
+    font-size:14px!important;
+    min-height:46px!important;
+  }
+}

@@ -32,24 +32,10 @@ function isAdmin(){ return activeUser?.role === "admin"; }
 function isPersonel(){ return activeUser?.role === "personel"; }
 
 const seed = {
-  customers: [
-    { id:"c_demo_1", name:"Ahmet Yılmaz", phone:"0533 000 00 00", type:"Şahıs", note:"Örnek müşteri" },
-    { id:"c_demo_2", name:"ABC Lojistik Ltd.", phone:"0542 111 11 11", type:"Firma", note:"Örnek firma / filo" }
-  ],
-  vehicles: [
-    { id:"v_demo_1", customerId:"c_demo_1", plate:"33 ABC 123", brand:"Ford", model:"Transit", year:"2018", note:"" },
-    { id:"v_demo_2", customerId:"c_demo_1", plate:"33 DEF 456", brand:"Fiat", model:"Doblo", year:"2020", note:"" },
-    { id:"v_demo_3", customerId:"c_demo_2", plate:"33 FİL 001", brand:"Mercedes", model:"Sprinter", year:"2021", note:"Şirket aracı" }
-  ],
-  services: [
-    { id:"s_demo_1", vehicleId:"v_demo_1", date:"2026-06-09", items:["Motor Yağı","Yağ Filtresi"], title:"Yağ bakımı", currentKm:125000, nextKm:135000, laborAmount:1000, partsAmount:4000, amount:5000, note:"Yağ + filtre değişti" },
-    { id:"s_demo_2", vehicleId:"v_demo_2", date:"2026-06-01", items:["Ön Balata"], title:"Fren bakımı", currentKm:98000, nextKm:108000, laborAmount:500, partsAmount:2000, amount:2500, note:"Balata değişti" },
-    { id:"s_demo_3", vehicleId:"v_demo_3", date:"2026-05-28", items:["Genel Kontrol","Motor Yağı","Hava Filtresi"], title:"Genel bakım", currentKm:210000, nextKm:220000, laborAmount:2500, partsAmount:9500, amount:12000, note:"Filo bakım kaydı" }
-  ],
-  payments: [
-    { id:"p_demo_1", customerId:"c_demo_1", vehicleId:"v_demo_1", date:"2026-06-09", amount:2000, note:"Nakit ödeme" },
-    { id:"p_demo_2", customerId:"c_demo_2", vehicleId:"v_demo_3", date:"2026-06-09", amount:5000, note:"Kısmi tahsilat" }
-  ]
+  customers: [],
+  vehicles: [],
+  services: [],
+  payments: []
 };
 
 let db = loadData();
@@ -482,7 +468,7 @@ function renderSettings(){
         <button class="btn" onclick="exportData()">Verileri Yedekle</button>
         <button class="btn" onclick="document.getElementById('importFile').click()">Yedekten Yükle</button>
         <input id="importFile" class="hidden" type="file" accept="application/json" onchange="importData(event)" />
-        <button class="btn ghost" onclick="clearDemo()">Örnek Kayıtları Temizle</button>
+        <button class="btn ghost" onclick="clearDemo()">Örnek Kayıtları Temizle</button><button class="btn danger-btn" onclick="resetAllData()">Tüm Verileri Sıfırla</button>
       </div>
     </div>
 
@@ -503,7 +489,7 @@ function customersTable(list){
   </tbody></table></div>`;
 }
 function vehiclesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
   ${list.map(v=>`<tr><td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td><td>${getCustomer(v.customerId)?.name || "-"}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td><td>${lastServiceDate(v.id)}</td><td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td><td>${v.note || "-"}</td><td>
       <button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button>
       ${isAdmin() ? `<button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
@@ -512,7 +498,7 @@ function vehiclesTable(list){
   </tbody></table></div>`;
 }
 function servicesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
   ${list.map(s=>{
     const v=getVehicle(s.vehicleId);
     const c=getCustomer(v?.customerId);
@@ -527,6 +513,7 @@ function servicesTable(list){
       <td class="amount">${money(s.partsAmount || 0)}</td>
       <td class="amount">${money(s.amount)}</td>
       <td>${s.note || "-"}</td>
+      <td>${s.createdBy || "-"}</td>
       <td>
         ${isAdmin() ? `
         <button class="small-btn" onclick="printSingleService('${s.id}')">Yazdır</button>
@@ -534,11 +521,11 @@ function servicesTable(list){
         <button class="small-btn" onclick="shareSingleServiceWhatsApp('${s.id}')">WP</button>` : `<span class="badge">Personel</span>`}
       </td>
     </tr>`;
-  }).join("") || emptyRow(11)}
+  }).join("") || emptyRow(12)}
   </tbody></table></div>`;
 }
 function paymentsTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Müşteri/Firma</th><th>Plaka</th><th>Tutar</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Müşteri/Firma</th><th>Plaka</th><th>Tutar</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
   ${list.map(p=>{const v=getVehicle(p.vehicleId); const c=getCustomer(p.customerId); return `<tr><td>${p.date || "-"}</td><td>${c?.name || "-"}</td><td>${v?.plate || "-"}</td><td class="amount good">${money(p.amount)}</td><td>${p.note || "-"}</td></tr>`}).join("") || emptyRow(5)}
   </tbody></table></div>`;
 }
@@ -593,7 +580,8 @@ function serviceSinglePlainText(serviceId){
   text += `İşçilik: ${money(s.laborAmount || 0)}\n`;
   text += `Parça: ${money(s.partsAmount || 0)}\n`;
   text += `Toplam: ${money(s.amount)}\n`;
-  text += `Not: ${s.note || "-"}\n`;
+  text += `Not: ${s.note || "-"}\n` +
+    `İşlemi Yapan: ${s.createdBy || "-"}\n`;
   return text;
 }
 
@@ -653,7 +641,7 @@ function serviceSingleHtml(serviceId){
         <tr><th>İşçilik</th><td>${money(s.laborAmount || 0)}</td></tr>
         <tr><th>Parça</th><td>${money(s.partsAmount || 0)}</td></tr>
         <tr><th>Toplam</th><td><b>${money(s.amount)}</b></td></tr>
-        <tr><th>Not</th><td>${s.note || "-"}</td></tr>
+        <tr><th>Not</th><td>${s.note || "-"}</td></tr><tr><th>İşlemi Yapan</th><td>${s.createdBy || "-"}</td></tr>
       </table>
 
       <div class="footer">Bu çıktı Hiçkorkmaz Garaj V7 sistemi üzerinden oluşturulmuştur.</div>
@@ -1001,7 +989,7 @@ modalForm.addEventListener("submit", function(e){
     const laborAmount = Number(obj.laborAmount || 0);
     const partsAmount = Number(obj.partsAmount || 0);
     const totalAmount = laborAmount + partsAmount;
-    db.services.push({ id:newId("s"), vehicleId:foundVehicle.id, date:obj.date, currentKm:currentKm, nextKm:Number(obj.nextKm || 0), items:selectedItems, title:obj.title, laborAmount:laborAmount, partsAmount:partsAmount, amount:totalAmount, note:obj.note });
+    db.services.push({ id:newId("s"), vehicleId:foundVehicle.id, date:obj.date, currentKm:currentKm, nextKm:Number(obj.nextKm || 0), items:selectedItems, title:obj.title, laborAmount:laborAmount, partsAmount:partsAmount, amount:totalAmount, note:obj.note, createdBy:activeUser?.email || "-", createdByRole:activeUser?.role || "-", createdAt:new Date().toISOString() });
   }
   if(modalType === "payment"){
     const v = getVehicle(obj.vehicleId);
@@ -1047,6 +1035,15 @@ window.importData = function(event){
   };
   reader.readAsText(file);
 };
+window.resetAllData = function(){
+  if(!requireAdmin()) return;
+  const ok = confirm("Tüm müşteri, araç, servis ve tahsilat kayıtları silinecek. Emin misin?");
+  if(!ok) return;
+  db = { customers: [], vehicles: [], services: [], payments: [] };
+  persist();
+  alert("Sistem temizlendi.");
+};
+
 window.clearDemo = function(){
   if(!requireAdmin()) return;
   db.customers = db.customers.filter(x=>!x.id.includes("_demo_"));
