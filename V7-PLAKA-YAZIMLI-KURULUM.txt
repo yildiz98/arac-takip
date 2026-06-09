@@ -1,0 +1,16 @@
+V7 Plaka Yazımlı Servis Kaydı Kurulumu
+
+Eklenen mantık:
+- Servis kaydında plaka artık seçenekten seçilmez.
+- Plakayı elle yazarsın.
+- Plaka kayıtlıysa servis otomatik o müşteri/firma altına kaydedilir.
+- Plaka kayıtlı değilse uyarı verir.
+- Yağ, polen, balata vb. seçilebilir işlem kalemleri korunmuştur.
+- Global arama korunmuştur.
+
+Yükleme:
+1. ZIP'i indir.
+2. İçinden çıkan dosyaları GitHub Pages yayın branch'ine yükle.
+3. Sende önceki ekranda branch: v6-tasarim görünüyordu.
+4. Commit changes de.
+5. Siteyi Ctrl + F5 ile yenile.

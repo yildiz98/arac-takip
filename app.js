@@ -24,6 +24,44 @@ const seed = {
 let db = loadData();
 let lastPageBeforeDetail = "dashboard";
 
+const SERVICE_ITEMS = [
+  "Motor Yağı",
+  "Yağ Filtresi",
+  "Hava Filtresi",
+  "Polen Filtresi",
+  "Yakıt / Mazot Filtresi",
+  "Ön Balata",
+  "Arka Balata",
+  "Fren Diski",
+  "Fren Hidroliği",
+  "Antifriz",
+  "Akü",
+  "Buji",
+  "Triger Seti",
+  "Debriyaj",
+  "Şanzıman Yağı",
+  "Rot Balans",
+  "Lastik",
+  "Klima Gazı",
+  "Genel Kontrol",
+  "Elektrik Arıza",
+  "Kaporta / Boya",
+  "Diğer"
+];
+
+function serviceItemsText(s){
+  if(Array.isArray(s.items) && s.items.length) return s.items.join(", ");
+  return s.title || "-";
+}
+
+function serviceItemCheckboxes(){
+  return `<div class="field"><label>Yapılan işlemler / parçalar</label>
+    <div class="check-grid">
+      ${SERVICE_ITEMS.map(item => `<label class="check-item"><input type="checkbox" name="items" value="${item}"><span>${item}</span></label>`).join("")}
+    </div>
+  </div>`;
+}
+
 function loadData(){
   const raw = localStorage.getItem(STORE_KEY);
   if(!raw){
@@ -54,6 +92,13 @@ function norm(v){ return safe(v).toLocaleLowerCase("tr-TR").replace(/\s+/g," ").
 
 function getCustomer(id){ return db.customers.find(x=>x.id===id); }
 function getVehicle(id){ return db.vehicles.find(x=>x.id===id); }
+function normalizePlate(plate){
+  return safe(plate).toLocaleUpperCase("tr-TR").replace(/\s+/g,"").trim();
+}
+function findVehicleByPlate(plate){
+  const target = normalizePlate(plate);
+  return db.vehicles.find(v => normalizePlate(v.plate) === target);
+}
 function getVehiclesByCustomer(customerId){ return db.vehicles.filter(x=>x.customerId===customerId); }
 function getServicesByVehicle(vehicleId){ return db.services.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
 function getPaymentsByVehicle(vehicleId){ return db.payments.filter(x=>x.vehicleId===vehicleId).sort((a,b)=>safe(b.date).localeCompare(safe(a.date))); }
@@ -156,7 +201,7 @@ window.filterServices = function(){
   let list = db.services.filter(s=>{
     const v = getVehicle(s.vehicleId);
     const c = getCustomer(v?.customerId);
-    return (!date || s.date === date) && (!txt || norm(`${s.title} ${s.note} ${v?.plate} ${c?.name}`).includes(txt));
+    return (!date || s.date === date) && (!txt || norm(`${s.title} ${serviceItemsText(s)} ${s.note} ${v?.plate} ${c?.name}`).includes(txt));
   }).sort((a,b)=>safe(b.date).localeCompare(safe(a.date)));
   document.getElementById("serviceList").innerHTML = servicesTable(list);
 }
@@ -198,8 +243,8 @@ function vehiclesTable(list){
   </tbody></table></div>`;
 }
 function servicesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>İşlem</th><th>Tutar</th><th>Sonraki Kontrol</th><th>Not</th></tr></thead><tbody>
-  ${list.map(s=>{const v=getVehicle(s.vehicleId); const c=getCustomer(v?.customerId); return `<tr><td>${s.date || "-"}</td><td>${v ? `<button class="small-btn" onclick="openVehicle('${v.id}')">${v.plate}</button>` : "-"}</td><td>${c?.name || "-"}</td><td>${s.title || "-"}</td><td class="amount">${money(s.amount)}</td><td>${s.nextDate || "-"}</td><td>${s.note || "-"}</td></tr>`}).join("") || emptyRow(7)}
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Seçilen İşlemler</th><th>Ek Başlık</th><th>Tutar</th><th>Sonraki Kontrol</th><th>Not</th></tr></thead><tbody>
+  ${list.map(s=>{const v=getVehicle(s.vehicleId); const c=getCustomer(v?.customerId); return `<tr><td>${s.date || "-"}</td><td>${v ? `<button class="small-btn" onclick="openVehicle('${v.id}')">${v.plate}</button>` : "-"}</td><td>${c?.name || "-"}</td><td>${serviceItemsText(s)}</td><td>${s.title || "-"}</td><td class="amount">${money(s.amount)}</td><td>${s.nextDate || "-"}</td><td>${s.note || "-"}</td></tr>`}).join("") || emptyRow(8)}
   </tbody></table></div>`;
 }
 function paymentsTable(list){
@@ -323,7 +368,7 @@ window.openModal = function(type){
     document.getElementById("modalBody").innerHTML = `${selectField("Sahibi / Firma","customerId",customerOptions)}${field("Plaka","plate")}${field("Marka","brand","text","",false)}${field("Model","model","text","",false)}${field("Yıl","year","number","",false)}${textareaField("Araç Notu","note")}`;
   }
   if(type === "service"){
-    document.getElementById("modalBody").innerHTML = `${selectField("Plaka","vehicleId",vehicleOptions)}${field("Servis Tarihi","date","date",today())}${field("İşlem / Bakım Başlığı","title")}${field("Tutar","amount","number")}${field("Sonraki Bakım / Kontrol Tarihi","nextDate","date","",false)}${textareaField("Not","note")}`;
+    document.getElementById("modalBody").innerHTML = `${field("Plaka Yaz","plate","text","")}${field("Servis Tarihi","date","date",today())}${serviceItemCheckboxes()}${field("Ek İşlem Başlığı / Açıklama","title","text","",false)}${field("Tutar","amount","number")}${field("Sonraki Bakım / Kontrol Tarihi","nextDate","date","",false)}${textareaField("Not","note")}<p class="notice">Plaka kayıtlı araçlarda varsa servis otomatik o müşteri/firma altına işlenir. Plaka kayıtlı değilse önce Araçlar bölümünden aracı eklemen gerekir.</p>`;
   }
   if(type === "payment"){
     document.getElementById("modalBody").innerHTML = `${selectField("Plaka","vehicleId",vehicleOptions)}${field("Tahsilat Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}`;
@@ -338,7 +383,15 @@ modalForm.addEventListener("submit", function(e){
 
   if(modalType === "customer") db.customers.push({ id:newId("c"), name:obj.name, phone:obj.phone, type:obj.type, note:obj.note });
   if(modalType === "vehicle") db.vehicles.push({ id:newId("v"), customerId:obj.customerId, plate:safe(obj.plate).toLocaleUpperCase("tr-TR"), brand:obj.brand, model:obj.model, year:obj.year, note:obj.note });
-  if(modalType === "service") db.services.push({ id:newId("s"), vehicleId:obj.vehicleId, date:obj.date, title:obj.title, amount:Number(obj.amount||0), nextDate:obj.nextDate, note:obj.note });
+  if(modalType === "service"){
+    const foundVehicle = findVehicleByPlate(obj.plate);
+    if(!foundVehicle){
+      alert("Bu plaka kayıtlı araçlarda bulunamadı. Önce Araçlar bölümünden plakayı müşteri/firma adına ekleyin.");
+      return;
+    }
+    const selectedItems = fd.getAll("items");
+    db.services.push({ id:newId("s"), vehicleId:foundVehicle.id, date:obj.date, items:selectedItems, title:obj.title, amount:Number(obj.amount||0), nextDate:obj.nextDate, note:obj.note });
+  }
   if(modalType === "payment"){
     const v = getVehicle(obj.vehicleId);
     db.payments.push({ id:newId("p"), customerId:v?.customerId, vehicleId:obj.vehicleId, date:obj.date, amount:Number(obj.amount||0), note:obj.note });

@@ -1,0 +1,29 @@
+V7 Servis Seçimli Güncelleme Kurulumu
+
+1. ZIP dosyasını indir.
+2. ZIP içindeki dosyaları çıkar.
+3. GitHub reposunda Pages hangi branch'ten yayın yapıyorsa o branch'i aç.
+   Sende önceki ekranda v6-tasarim branch'i görünüyordu.
+4. Bu dosyaları aynı branch'e yükle:
+   - index.html
+   - style.css
+   - app.js
+   - manifest.json
+   - service-worker.js
+   - firebase-config.js
+   - logo.png
+   - icon-192.png
+   - icon-512.png
+   - README.md
+5. Commit changes de.
+6. 1-2 dakika bekle.
+7. Siteyi Ctrl + F5 ile yenile.
+
+Eklenen:
+- Servis kayıtlarında seçilebilir işlem/parça listesi.
+- Yağ, polen, filtre, balata, disk, akü, antifriz, rot-balans vb.
+- Seçilen işlemler servis geçmişinde görünür.
+- Servis filtresinde bu işlemler aranabilir.
+
+Not:
+Mevcut kayıtlar silinmez. Yeni servis kayıtlarında seçilen işlem kalemleri görünür.

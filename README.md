@@ -32,3 +32,45 @@
 Kayıtlar tarayıcı localStorage içinde tutulur.
 Bu dosyaları GitHub'a yüklemek mevcut cihazdaki kayıtları silmez.
 Yine de Ayarlar bölümünden yedek alman önerilir.
+
+
+## V7 Servis Kaydı Seçimli İşlem Güncellemesi
+
+Bu sürümde Servis Kaydı ekranına seçilebilir bakım/işlem kalemleri eklendi:
+
+- Motor Yağı
+- Yağ Filtresi
+- Hava Filtresi
+- Polen Filtresi
+- Yakıt / Mazot Filtresi
+- Ön Balata
+- Arka Balata
+- Fren Diski
+- Fren Hidroliği
+- Antifriz
+- Akü
+- Buji
+- Triger Seti
+- Debriyaj
+- Şanzıman Yağı
+- Rot Balans
+- Lastik
+- Klima Gazı
+- Genel Kontrol
+- Elektrik Arıza
+- Kaporta / Boya
+- Diğer
+
+Seçilen kalemler servis geçmişinde görünür ve servis filtresinde aranabilir.
+
+
+## V7 Servis Kaydında Elle Plaka Yazma Güncellemesi
+
+Bu sürümde Servis Kaydı eklerken plaka artık açılır listeden seçilmez.
+
+Yeni mantık:
+- Servis kaydında plaka elle yazılır.
+- Yazılan plaka mevcut araçlarda kayıtlıysa sistem otomatik olarak o müşteri/firma altına işler.
+- Plaka kayıtlı değilse sistem uyarı verir.
+- Plaka kayıtlı değilse önce Araçlar bölümünden müşteri/firma adına araç eklenmelidir.
+- Servis geçmişinde yine müşteri/firma, plaka ve seçilen işlem kalemleri görünür.
