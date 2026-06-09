@@ -1,0 +1,18 @@
+Hiçkorkmaz Garaj V7 - Tek Servis Kaydı WP / Yazdır / PDF
+
+Eklenen:
+- Servis geçmişindeki her satıra Yazdır / PDF / WP butonları.
+- Bu butonlar sadece tıklanan tek servis kaydını gönderir/yazdırır.
+- Araç üstündeki butonlar Tüm Geçmiş olarak kalır.
+
+Kullanım:
+1. Araç detayına gir.
+2. Servis Geçmişi bölümünde ilgili servis satırını bul.
+3. O satırdaki Yazdır, PDF veya WP butonuna bas.
+4. Sadece o servis kaydı çıkar/gönderilir.
+
+Yükleme:
+1. ZIP'i indir.
+2. Dosyaları GitHub Pages yayın branch'ine yükle.
+3. Commit changes de.
+4. Siteyi Ctrl + F5 ile yenile.

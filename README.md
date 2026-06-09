@@ -142,3 +142,15 @@ Eklenen özellikler:
 
 PDF Notu:
 Tarayıcı yazdır penceresi açılır. Hedef olarak “PDF olarak kaydet” seçilerek PDF alınır.
+
+
+## V7 Tek Servis Kaydı Yazdır / PDF / WhatsApp Güncellemesi
+
+Önceki sürümde WhatsApp ve çıktı araç geçmişindeki bütün servisleri gönderiyordu.
+Bu sürümde servis geçmişi tablosundaki her satır için ayrı butonlar eklendi:
+
+- Yazdır: sadece tıklanan servis kaydını yazdırır.
+- PDF: sadece tıklanan servis kaydını PDF olarak kaydetmek için yazdır ekranı açar.
+- WP: sadece tıklanan servis kaydını WhatsApp mesajı olarak hazırlar.
+
+Araç detayındaki üst butonlar ise özellikle “Tüm Geçmiş” olarak adlandırıldı.
