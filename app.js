@@ -537,9 +537,9 @@ function vehiclesTable(list){
     <td>
       <button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button>
       ${isAdmin() ? `
-        <button class="small-btn danger-btn" onclick="deleteVehicle('${v.id}')">Sil</button>
         <button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
         <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>
+        <button class="small-btn danger-btn" onclick="deleteVehicle('${v.id}')">Sil</button>
       ` : ``}
     </td>
   </tr>`).join("") || emptyRow(7)}
