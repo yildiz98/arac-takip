@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arac-servis-v8-admin-fiyatlandirma-durum-1781266331';
+const CACHE_NAME = 'arac-servis-v8-musteri-yazdir-1781269000';
 const ASSETS = [
   './',
   './index.html',

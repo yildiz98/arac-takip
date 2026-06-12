@@ -601,7 +601,7 @@ PERSONEL_EMAILS = ["personel1@aractakip.com"]</pre>
 
 function customersTable(list){
   return `<div class="table-wrap"><table><thead><tr><th>Ad Soyad / Firma</th><th>Telefon</th><th>Tür</th><th>Araç Sayısı</th><th>Toplam Borç</th><th>Toplam Ödeme</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.phone || "-"}</td><td>${c.type || "-"}</td><td>${getVehiclesByCustomer(c.id).length}</td><td class="amount ${customerDebt(c.id)>0?"bad":"good"}">${money(customerDebt(c.id))}</td><td class="amount good">${money(customerPaid(c.id))}</td><td><button class="small-btn" onclick="openCustomer('${c.id}')">Detay</button></td></tr>`).join("") || emptyRow(7)}
+  ${list.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.phone || "-"}</td><td>${c.type || "-"}</td><td>${getVehiclesByCustomer(c.id).length}</td><td class="amount ${customerDebt(c.id)>0?"bad":"good"}">${money(customerDebt(c.id))}</td><td class="amount good">${money(customerPaid(c.id))}</td><td><button class="small-btn" onclick="openCustomer('${c.id}')">Detay</button>${isAdmin() ? ` <button class="small-btn" onclick="printCustomerAccount('${c.id}')">Yazdır</button>` : ``}</td></tr>`).join("") || emptyRow(7)}
   </tbody></table></div>`;
 }
 function vehiclesTable(list){
@@ -675,7 +675,7 @@ function customerDebtTable(onlyDebt){
   let list = db.customers.map(c=>({ ...c, debt: customerDebt(c.id), count:getVehiclesByCustomer(c.id).length }));
   if(onlyDebt) list = list.filter(c=>c.debt>0).slice(0,8);
   return `<div class="table-wrap"><table><thead><tr><th>Müşteri/Firma</th><th>Araç</th><th>Toplam Borç</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.count}</td><td class="amount ${c.debt>0?"bad":"good"}">${money(c.debt)}</td><td><button class="small-btn" onclick="openCustomer('${c.id}')">Araçları Gör</button></td></tr>`).join("") || emptyRow(4)}
+  ${list.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.count}</td><td class="amount ${c.debt>0?"bad":"good"}">${money(c.debt)}</td><td><button class="small-btn" onclick="openCustomer('${c.id}')">Araçları Gör</button>${isAdmin() ? ` <button class="small-btn" onclick="printCustomerAccount('${c.id}')">Yazdır</button>` : ``}</td></tr>`).join("") || emptyRow(4)}
   </tbody></table></div>`;
 }
 function upcomingTable(list){
@@ -689,7 +689,7 @@ window.openCustomer = function(customerId){
   const c = getCustomer(customerId); if(!c) return;
   const vehicles = getVehiclesByCustomer(customerId);
   document.getElementById("detail").innerHTML = `
-    <div class="detail-title"><div><span class="badge">Müşteri / Firma Kartı</span><h2>${c.name}</h2><p>${c.phone || "-"} ${c.note ? " • " + c.note : ""}</p></div><button class="btn" onclick="openPage('${lastPageBeforeDetail}')">Geri</button></div>
+    <div class="detail-title"><div><span class="badge">Müşteri / Firma Kartı</span><h2>${c.name}</h2><p>${c.phone || "-"} ${c.note ? " • " + c.note : ""}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">${isAdmin() ? `<button class="btn" onclick="printCustomerAccount('${c.id}')">Müşteri Hesabı Yazdır</button>` : ``}<button class="btn" onclick="openPage('${lastPageBeforeDetail}')">Geri</button></div></div>
     <div class="customer-card">
       <div class="info-box"><span>Ad soyad / firma adı</span><b>${c.name}</b></div><div class="info-box"><span>Telefon</span><b>${c.phone || "-"}</b></div><div class="info-box"><span>Araç sayısı</span><b>${vehicles.length}</b></div>
       <div class="info-box"><span>Toplam borç</span><b class="${customerDebt(c.id)>0?"bad":"good"}">${money(customerDebt(c.id))}</b></div><div class="info-box"><span>Toplam ödeme</span><b class="good">${money(customerPaid(c.id))}</b></div><div class="info-box"><span>Toplam işlem tutarı</span><b>${money(customerTotal(c.id))}</b></div>
@@ -843,6 +843,104 @@ window.shareSingleServiceWhatsApp = function(serviceId){
   if(!canOutput()) return;
   const text = encodeURIComponent(serviceSinglePlainText(serviceId));
   window.open(`https://wa.me/?text=${text}`, "_blank");
+};
+
+
+function getPaymentsByCustomer(customerId){
+  const vehicleIds = getVehiclesByCustomer(customerId).map(v => v.id);
+  return db.payments
+    .filter(p => p.customerId === customerId || vehicleIds.includes(p.vehicleId))
+    .sort((a,b)=>safe(b.date).localeCompare(safe(a.date)));
+}
+
+function customerAccountHtml(customerId){
+  const c = getCustomer(customerId);
+  if(!c) return "<p>Müşteri/Firma bulunamadı.</p>";
+
+  const vehicles = getVehiclesByCustomer(customerId);
+  const payments = getPaymentsByCustomer(customerId);
+  const total = customerTotal(customerId);
+  const paid = customerPaid(customerId);
+  const debt = customerDebt(customerId);
+
+  const vehiclesHtml = vehicles.map(v => {
+    const rows = getServicesByVehicle(v.id);
+    const vehicleName = `${v.noPlateName ? v.noPlateName + " / " : ""}${v.plate || "-"}`;
+    const serviceRows = rows.map(s => `
+      <tr>
+        <td>${s.date || "-"}</td>
+        <td>${kmFormat(s.currentKm)}</td>
+        <td>${kmFormat(s.nextKm)}</td>
+        <td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td>
+        <td>${servicePricingPending(s) ? "Fiyat bekliyor" : money(s.laborAmount || 0)}</td>
+        <td>${servicePricingPending(s) ? "Fiyat bekliyor" : money(s.partsAmount || 0)}</td>
+        <td><b>${servicePricingPending(s) ? "Fiyat bekliyor" : money(s.amount)}</b></td>
+        <td>${s.note || "-"}</td>
+        <td>${s.createdBy || "-"}</td>
+      </tr>
+    `).join("");
+
+    return `
+      <div class="section">
+        <h3>Araç: ${vehicleName}</h3>
+        <p><b>Marka/Model:</b> ${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</p>
+        <p><b>Son KM:</b> ${kmFormat(vehicleLastKm(v.id))} &nbsp; <b>Sonraki Bakım:</b> ${kmFormat(vehicleNextKm(v.id))} &nbsp; <b>Araç Borcu:</b> ${money(vehicleDebt(v.id))}</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Tarih</th><th>Geldiği KM</th><th>Sonraki Bakım</th><th>Yapılan İşlemler</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th><th>İşlemi Yapan</th>
+            </tr>
+          </thead>
+          <tbody>${serviceRows || `<tr><td colspan="9">Servis kaydı bulunamadı.</td></tr>`}</tbody>
+        </table>
+      </div>
+    `;
+  }).join("");
+
+  const paymentsHtml = payments.map(p => {
+    const v = getVehicle(p.vehicleId);
+    const plateText = v ? (v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate) : (p.manualPlate || "-");
+    return `<tr><td>${p.date || "-"}</td><td>${plateText}</td><td>${paymentTypeText(p)}</td><td><b>${money(p.amount)}</b></td><td>${p.note || "-"}</td><td>${p.createdBy || "-"}</td></tr>`;
+  }).join("");
+
+  return `
+    <!doctype html>
+    <html lang="tr">
+    <head>
+      <meta charset="utf-8">
+      <title>Müşteri Hesap Dökümü - ${c.name}</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#111;margin:22px}
+        .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:16px}
+        h1{margin:0;font-size:24px} h2{margin:4px 0 0;font-size:18px} h3{margin:18px 0 8px}
+        p{margin:4px 0}.muted{color:#555}.section{page-break-inside:avoid;margin-top:18px}
+        .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+        .box{border:1px solid #ccc;border-radius:8px;padding:10px}.box span{display:block;color:#666;font-size:12px}.box b{display:block;margin-top:5px;font-size:16px}
+        table{width:100%;border-collapse:collapse;margin-top:10px;font-size:11px} th,td{border:1px solid #ccc;padding:7px;text-align:left;vertical-align:top} th{background:#f2f2f2}
+        .footer{margin-top:24px;color:#666;font-size:12px}@media print{button{display:none} body{margin:10px}.section{page-break-inside:avoid}}
+      </style>
+    </head>
+    <body>
+      <button onclick="window.print()" style="padding:10px 14px;margin-bottom:14px">Yazdır / PDF Kaydet</button>
+      <div class="head"><div><h1>Hiçkorkmaz Garaj</h1><h2>Müşteri/Firma Hesap Dökümü</h2><p class="muted">Servis, tahsilat ve cari borç raporu</p></div><div><p><b>Çıktı Tarihi:</b> ${today()}</p></div></div>
+      <p><b>Müşteri/Firma:</b> ${c.name}</p><p><b>Telefon:</b> ${c.phone || "-"}</p><p><b>Tür:</b> ${c.type || "-"}</p>
+      <div class="summary">
+        <div class="box"><span>Araç Sayısı</span><b>${vehicles.length}</b></div><div class="box"><span>Toplam İşlem</span><b>${money(total)}</b></div><div class="box"><span>Toplam Tahsilat</span><b>${money(paid)}</b></div><div class="box"><span>Kalan Borç</span><b>${money(debt)}</b></div>
+      </div>
+      ${vehiclesHtml || `<div class="section"><h3>Araçlar</h3><p>Kayıtlı araç bulunamadı.</p></div>`}
+      <div class="section"><h3>Tahsilatlar</h3><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Tür</th><th>Tutar</th><th>Not</th><th>İşlemi Yapan</th></tr></thead><tbody>${paymentsHtml || `<tr><td colspan="6">Tahsilat kaydı bulunamadı.</td></tr>`}</tbody></table></div>
+      <div class="footer">Bu çıktı Hiçkorkmaz Garaj V8 sistemi üzerinden oluşturulmuştur.</div>
+    </body>
+    </html>
+  `;
+}
+
+window.printCustomerAccount = function(customerId){
+  if(!canOutput()) return;
+  const w = window.open("", "_blank");
+  w.document.open();
+  w.document.write(customerAccountHtml(customerId));
+  w.document.close();
 };
 
 

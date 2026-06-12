@@ -1,0 +1,27 @@
+V8 MÜŞTERİ/FİRMA HESAP YAZDIRMA GÜNCELLEMESİ
+
+Bu sürümde Borç Takibi ve Müşteriler/Firmalar ekranlarına admin için müşteri/firma bazlı Yazdır butonu eklendi.
+
+Yazdırma raporunda:
+- Müşteri/Firma bilgileri
+- Araç sayısı
+- Toplam işlem tutarı
+- Toplam tahsilat
+- Kalan borç
+- Her araca ait servis geçmişi
+- Tahsilat geçmişi
+- İşlemi yapan kullanıcı bilgisi
+
+yer alır.
+
+Bu özellik sadece admin kullanıcısında görünür. Personel müşteri, araç ve servis kaydı yapmaya devam eder; servis fiyatlandırması yapamaz.
+
+GitHub yükleme:
+- app.js
+- service-worker.js
+- style.css
+- index.html
+- firebase-config.js
+ve diğer dosyalar aynı klasöre yüklenmelidir.
+
+Güncelleme sonrası eski cache kalırsa CTRL+F5 yapın veya PWA site verilerini temizleyin.
