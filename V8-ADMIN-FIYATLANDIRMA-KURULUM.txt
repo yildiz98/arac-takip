@@ -1,0 +1,24 @@
+V8 ADMIN FIYATLANDIRMA GUNCELLEMESI
+
+Bu surumde personel servis kaydi acabilir ancak fiyat giremez.
+
+Mantik:
+- Personel: musteri/firma, arac ve servis kaydi ekler.
+- Personel servis kaydinda Iscilik Tutari, Parca Tutari ve Toplam Tutar alanlarini goremez/giremez.
+- Personelin actigi servis kaydi admin ekraninda Fiyat bekliyor olarak gorunur.
+- Admin servis kaydinda Fiyatlandir butonuna basarak iscilik ve parca tutarini girer.
+- Toplam tutar otomatik hesaplanir.
+- Fiyat girildikten sonra borc, dashboard, rapor ve servis toplamlarina yansir.
+
+GitHub yukleme:
+- index.html
+- app.js
+- service-worker.js
+- firebase-config.js
+- style.css
+- manifest.json
+- gorseller
+aynı klasore yuklenmelidir.
+
+Onemli:
+Guncellemeden sonra eski cache kalirsa sayfayi CTRL+F5 ile yenileyin. Telefonda PWA eski surumu acarsa kaldirip tekrar ekleyin.

@@ -5,14 +5,27 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  onSnapshot,
+  setDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { firebaseConfig, ADMIN_EMAILS, PERSONEL_EMAILS } from "./firebase-config.js";
 
 const STORE_KEY = "hickorkmaz_garaj_v7_data";
 const AUTH_KEY = "hickorkmaz_garaj_v7_google_auth";
+const DELETE_PASSWORD = "212198";
 
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
+const firestoreDb = getFirestore(firebaseApp);
+const SHARED_DATA_DOC = doc(firestoreDb, "garages", "hickorkmaz-garaj-v7");
 let activeUser = null;
+let unsubscribeSharedData = null;
+let isApplyingCloudData = false;
+let cloudDataLoaded = false;
 
 function normalizeEmail(email){
   return (email || "").toLocaleLowerCase("tr-TR").trim();
@@ -105,12 +118,68 @@ function loadData(){
     return structuredClone(seed);
   }
 }
+function normalizeDb(data){
+  return {
+    customers: Array.isArray(data?.customers) ? data.customers : [],
+    vehicles: Array.isArray(data?.vehicles) ? data.vehicles : [],
+    services: Array.isArray(data?.services) ? data.services : [],
+    payments: Array.isArray(data?.payments) ? data.payments : []
+  };
+}
+
+function hasAnyRecord(data){
+  const d = normalizeDb(data);
+  return d.customers.length || d.vehicles.length || d.services.length || d.payments.length;
+}
+
+async function saveCloudData(){
+  if(!activeUser || isApplyingCloudData) return;
+  try{
+    await setDoc(SHARED_DATA_DOC, {
+      ...normalizeDb(db),
+      updatedAt: serverTimestamp(),
+      updatedBy: activeUser.email || "-"
+    });
+  }catch(err){
+    console.error("Ortak kayıt havuzu kaydedilemedi:", err);
+    alert("Kayıt cihazına kaydedildi fakat ortak Firebase verisine gönderilemedi. İnternet bağlantını ve Firestore kurallarını kontrol et.");
+  }
+}
+
+function startSharedDataSync(){
+  if(unsubscribeSharedData) unsubscribeSharedData();
+  cloudDataLoaded = false;
+
+  unsubscribeSharedData = onSnapshot(SHARED_DATA_DOC, async (snap) => {
+    isApplyingCloudData = true;
+
+    if(snap.exists()){
+      db = normalizeDb(snap.data());
+      localStorage.setItem(STORE_KEY, JSON.stringify(db));
+      cloudDataLoaded = true;
+      isApplyingCloudData = false;
+      if(activeUser) render();
+      return;
+    }
+
+    // Firebase'te ortak veri henüz yoksa mevcut cihazdaki eski veriyi ilk ortak havuza taşı.
+    cloudDataLoaded = true;
+    isApplyingCloudData = false;
+    if(hasAnyRecord(db)) await saveCloudData();
+    if(activeUser) render();
+  }, (err) => {
+    isApplyingCloudData = false;
+    console.error("Ortak kayıt havuzu okunamadı:", err);
+    alert("Ortak kayıt havuzu okunamadı. Firestore etkin mi ve kurallar doğru mu kontrol et.");
+    if(activeUser) render();
+  });
+}
+
 function persist(){
+  db = normalizeDb(db);
   localStorage.setItem(STORE_KEY, JSON.stringify(db));
-  setupAuth();
-setupMobileMenu();
-applyAuthState();
-if(activeUser) render();
+  if(activeUser) saveCloudData();
+  if(activeUser) render();
 }
 function newId(prefix){ return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7); }
 function money(n){ return (Number(n)||0).toLocaleString("tr-TR", {maximumFractionDigits:0}) + " TL"; }
@@ -223,6 +292,19 @@ function paymentTypeText(p){
   return p.vehicleId ? "Sadece Araç" : "Sadece Cari Hesap";
 }
 
+function servicePricingPending(s){
+  return s?.pricingStatus === "pending" || (Number(s?.amount || 0) === 0 && s?.createdByRole === "personel");
+}
+function serviceMoneyText(s, field){
+  return servicePricingPending(s) ? "Fiyat bekliyor" : money(s?.[field] || 0);
+}
+function servicePricingBadge(s){
+  if(servicePricingPending(s)){
+    return `<span class="badge price-pending">🟡 Fiyat bekliyor</span>`;
+  }
+  return `<span class="badge price-priced">🟢 Fiyatlandırıldı</span>`;
+}
+
 
 const pages = {
   dashboard:"Dashboard",
@@ -333,6 +415,7 @@ function setupAuth(){
   onAuthStateChanged(auth, (user) => {
     if(!user){
       activeUser = null;
+      if(unsubscribeSharedData){ unsubscribeSharedData(); unsubscribeSharedData = null; }
       applyAuthState();
       return;
     }
@@ -355,7 +438,7 @@ function setupAuth(){
     };
 
     applyAuthState();
-    render();
+    startSharedDataSync();
   });
 
   if(logoutBtn){
@@ -404,10 +487,7 @@ function openPage(page){
   document.getElementById("pageTitle").textContent = pages[page] || "Dashboard";
   document.getElementById("pageSubtitle").textContent = "Her ekranda isim, firma veya plaka ile global arama";
   clearSearchOnly();
-  setupAuth();
-setupMobileMenu();
-applyAuthState();
-if(activeUser) render();
+  render();
 }
 
 function stat(label,value,cls=""){
@@ -430,13 +510,13 @@ function renderDashboard(){
     .sort((a,b)=>(a.remaining ?? 999999999)-(b.remaining ?? 999999999))
     .slice(0,8);
 
-  document.getElementById("dashboard").innerHTML = `
+ document.getElementById("dashboard").innerHTML = `
     <div class="grid stats">
-      ${stat("Toplam Araç", db.vehicles.length)}
-      ${stat("Toplam Müşteri/Firma", db.customers.length)}
-      ${stat("Toplam Alacak", money(totalDebt), totalDebt>0?"bad":"good")}
-      ${stat("Toplam Ciro", money(totalRevenue))}
-      ${stat("Bugünkü Tahsilat", money(todayPaid), "good")}
+      ${stat('<i class="fa-solid fa-car"></i> Toplam Araç', db.vehicles.length)}
+      ${stat('<i class="fa-solid fa-user-group"></i> Toplam Müşteri/Firma', db.customers.length)}
+      ${stat('<i class="fa-solid fa-wallet"></i> Toplam Alacak', money(totalDebt), totalDebt>0?"bad":"good")}
+      ${stat('<i class="fa-solid fa-chart-line"></i> Toplam Ciro', money(totalRevenue), "good")}
+      ${stat('<i class="fa-solid fa-money-bill-wave"></i> Bugünkü Tahsilat', money(todayPaid), "good")}
     </div>
     <div class="grid two">
       <div class="panel"><div class="panel-head"><h3>Son Servis Kayıtları</h3><button class="small-btn" onclick="openPage('services')">Tümü</button></div>${servicesTable(recentServices)}</div>
@@ -499,7 +579,7 @@ function renderSettings(){
   document.getElementById("settings").innerHTML = `
     <div class="panel">
       <h3>Ayarlar</h3>
-      <p class="notice">Firebase e-posta/şifre girişi aktiftir. Admin ve personel e-posta listeleri <b>firebase-config.js</b> dosyasından düzenlenir.</p>
+      <p class="notice">Firebase e-posta/şifre girişi ve ortak Firestore kayıt havuzu aktiftir. Admin ve personel aynı müşteri, araç, servis ve tahsilat verilerini görür.</p>
       <div class="toolbar">
         <button class="btn" onclick="exportData()">Verileri Yedekle</button>
         <button class="btn" onclick="document.getElementById('importFile').click()">Yedekten Yükle</button>
@@ -511,7 +591,7 @@ function renderSettings(){
     <div class="panel">
       <h3>Yetki Listesi</h3>
       <p class="notice">
-        Admin tüm yetkilere sahiptir. Personel sadece müşteri/firma, araç ve servis kaydı yapabilir.
+        Admin tüm yetkilere sahiptir. Personel müşteri/firma, araç ve servis kaydı yapabilir; kayıtlar tüm kullanıcılarda ortak görünür.
         Yetki vermek için ZIP içindeki <b>firebase-config.js</b> dosyasında ADMIN_EMAILS ve PERSONEL_EMAILS listelerini düzenle.
       </p>
       <pre class="code-box">ADMIN_EMAILS = ["admin@aractakip.com"]
@@ -525,16 +605,27 @@ function customersTable(list){
   </tbody></table></div>`;
 }
 function vehiclesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(v=>`<tr><td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td><td>${getCustomer(v.customerId)?.name || "-"}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td><td>${lastServiceDate(v.id)}</td><td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td><td>${v.note || "-"}</td><td>
+  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
+  ${list.map(v=>`<tr>
+    <td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td>
+    <td>${getCustomer(v.customerId)?.name || "-"}</td>
+    <td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td>
+    <td>${lastServiceDate(v.id)}</td>
+    <td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td>
+    <td>${v.note || "-"}</td>
+    <td>
       <button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button>
-      ${isAdmin() ? `<button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
-      <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>` : ``}
-    </td></tr>`).join("") || emptyRow(7)}
+      ${isAdmin() ? `
+        <button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
+        <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>
+        <button class="small-btn danger-btn" onclick="deleteVehicle('${v.id}')">Sil</button>
+      ` : ``}
+    </td>
+  </tr>`).join("") || emptyRow(7)}
   </tbody></table></div>`;
 }
 function servicesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>Durum</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
   ${list.map(s=>{
     const v=getVehicle(s.vehicleId);
     const c=getCustomer(v?.customerId);
@@ -545,19 +636,21 @@ function servicesTable(list){
       <td>${kmFormat(s.currentKm)}</td>
       <td>${kmFormat(s.nextKm)}</td>
       <td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td>
-      <td class="amount">${money(s.laborAmount || 0)}</td>
-      <td class="amount">${money(s.partsAmount || 0)}</td>
-      <td class="amount">${money(s.amount)}</td>
+      <td>${servicePricingBadge(s)}</td>
+      <td class="amount ${servicePricingPending(s)?"warn":"good"}">${serviceMoneyText(s,"laborAmount")}</td>
+      <td class="amount ${servicePricingPending(s)?"warn":"good"}">${serviceMoneyText(s,"partsAmount")}</td>
+      <td class="amount ${servicePricingPending(s)?"warn":"good"}">${serviceMoneyText(s,"amount")}</td>
       <td>${s.note || "-"}</td>
       <td>${s.createdBy || "-"}</td>
       <td>
         ${isAdmin() ? `
+        <button class="small-btn primary" onclick="openPricingModal('${s.id}')">${servicePricingPending(s) ? "Fiyatlandır" : "Fiyatı Düzenle"}</button>
         <button class="small-btn" onclick="printSingleService('${s.id}')">Yazdır</button>
         <button class="small-btn" onclick="downloadSingleServicePdf('${s.id}')">PDF</button>
         <button class="small-btn" onclick="shareSingleServiceWhatsApp('${s.id}')">WP</button>` : `<span class="badge">Personel</span>`}
       </td>
     </tr>`;
-  }).join("") || emptyRow(12)}
+  }).join("") || emptyRow(13)}
   </tbody></table></div>`;
 }
 function paymentsTable(list){
@@ -615,22 +708,52 @@ function canOutput(){
 function serviceSinglePlainText(serviceId){
   const s = db.services.find(x => x.id === serviceId);
   if(!s) return "Servis kaydı bulunamadı.";
+
   const v = getVehicle(s.vehicleId);
   const c = getCustomer(v?.customerId);
-  const vehicleName = `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
-  let text = `Hiçkorkmaz Garaj - Servis Kaydı\n\n`;
-  text += `Müşteri/Firma: ${c?.name || "-"}\n`;
-  text += `Araç: ${vehicleName}\n`;
-  text += `Marka/Model: ${[v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-"}\n`;
-  text += `Tarih: ${s.date || "-"}\n`;
+
+  const vehicleName =
+    `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
+
+  const vehicleModel =
+    [v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-";
+
+  let text = `HİÇKORKMAZ GARAJ\n`;
+  text += `------------------------------\n\n`;
+
+  text += `[Müşteri/Firma]\n`;
+  text += `${c?.name || "-"}\n\n`;
+
+  text += `[Araç]\n`;
+  text += `${vehicleName}\n`;
+  text += `${vehicleModel}\n\n`;
+
+  text += `[Servis Tarihi]\n`;
+  text += `${s.date || "-"}\n\n`;
+
+  text += `[KM Bilgileri]\n`;
   text += `Geldiği KM: ${kmFormat(s.currentKm)}\n`;
-  text += `Bir Sonraki Bakım KM: ${kmFormat(s.nextKm)}\n`;
-  text += `Yapılan İşlemler: ${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n`;
+  text += `Sonraki Bakım: ${kmFormat(s.nextKm)}\n\n`;
+
+  text += `[Yapılan İşlemler]\n`;
+  text += `${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n\n`;
+
+  text += `[Ücret Bilgileri]\n`;
   text += `İşçilik: ${money(s.laborAmount || 0)}\n`;
   text += `Parça: ${money(s.partsAmount || 0)}\n`;
-  text += `Toplam: ${money(s.amount)}\n`;
-  text += `Not: ${s.note || "-"}\n` +
-    `İşlemi Yapan: ${s.createdBy || "-"}\n`;
+  text += `Toplam: ${money(s.amount)}\n\n`;
+
+  if(s.note){
+    text += `[Not]\n`;
+    text += `${s.note}\n\n`;
+  }
+
+  text += `[İşlemi Yapan]\n`;
+  text += `${s.createdBy || "-"}\n\n`;
+
+  text += `Teşekkür ederiz.\n`;
+  text += `Hiçkorkmaz Garaj`;
+
   return text;
 }
 
@@ -954,12 +1077,36 @@ window.openModal = function(type){
     document.getElementById("modalBody").innerHTML = `${field("Müşteri / Firma Adı","customerName","text","")}${field("Telefon","customerPhone","text","",false)}${field("Plaka","plate","text","",false)}${field("Plakasız Araç Tanımı","noPlateName","text","",false)}${field("Marka","brand","text","",false)}${field("Model","model","text","",false)}${field("Yıl","year","number","",false)}${textareaField("Araç Notu","note")}<p class="notice">Plaka varsa yaz. Plakası olmayan araçlarda Plakasız Araç Tanımı alanına örnek olarak “Forklift”, “Römork”, “Atölye Aracı” yazabilirsin. Müşteri/firma sistemde yoksa otomatik oluşturulur.</p>`;
   }
   if(type === "service"){
-    document.getElementById("modalBody").innerHTML = `${field("Plaka / Araç Tanımı / Müşteri-Firma Adı","serviceTarget","text","")}${field("Servis Tarihi","date","date",today())}${field("Geldiği KM","currentKm","number")}${field("Bir Sonraki Bakım KM","nextKm","number","",false)}${serviceItemCheckboxes()}${field("Ek İşlem Başlığı / Açıklama","title","text","",false)}${field("İşçilik Tutarı","laborAmount","number","0",false)}${field("Parça Tutarı","partsAmount","number","0",false)}<div class="field"><label>Toplam Tutar</label><input id="serviceTotalPreview" type="text" value="0 TL" readonly></div><div id="serviceTargetChoice" class="hidden">${selectField("Birden fazla araç bulunduysa seç","manualVehicleId",serviceTargetOptions())}</div>${textareaField("Not","note")}<p class="notice">Plaka, plakasız araç tanımı veya müşteri/firma adı yazabilirsin. Tek araç bulunursa otomatik kaydeder. Birden fazla araç varsa aşağıdan doğru aracı seçebilirsin.</p>`;
+    const priceFields = isAdmin()
+      ? `${field("İşçilik Tutarı","laborAmount","number","0",false)}${field("Parça Tutarı","partsAmount","number","0",false)}<div class="field"><label>Toplam Tutar</label><input id="serviceTotalPreview" type="text" value="0 TL" readonly></div>`
+      : `<p class="notice"><b>Personel fiyat giremez.</b> Servis kaydı admin ekranına “Fiyat bekliyor” olarak düşer. Admin daha sonra fiyatlandırma yapar.</p>`;
+
+    document.getElementById("modalBody").innerHTML = `${field("Plaka / Araç Tanımı / Müşteri-Firma Adı","serviceTarget","text","")}${field("Servis Tarihi","date","date",today())}${field("Geldiği KM","currentKm","number")}${field("Bir Sonraki Bakım KM","nextKm","number","",false)}${serviceItemCheckboxes()}${field("Ek İşlem Başlığı / Açıklama","title","text","",false)}${priceFields}<div id="serviceTargetChoice" class="hidden">${selectField("Birden fazla araç bulunduysa seç","manualVehicleId",serviceTargetOptions())}</div>${textareaField("Not","note")}<p class="notice">Plaka, plakasız araç tanımı veya müşteri/firma adı yazabilirsin. Tek araç bulunursa otomatik kaydeder. Birden fazla araç varsa aşağıdan doğru aracı seçebilirsin.</p>`;
     setTimeout(() => { bindServiceTotalPreview(); bindServiceTargetFinder(); }, 0);
   }
   if(type === "payment"){
     document.getElementById("modalBody").innerHTML = `${field("Müşteri / Firma Adı","customerName","text","",false)}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka kayıtlıysa ödeme araç borcundan düşer. Plaka boşsa ödeme Müşteri/Firma cari hesabından düşer.</p>`;
   }
+  modal.showModal();
+};
+
+window.openPricingModal = function(serviceId){
+  if(!requireAdmin()) return;
+  const s = db.services.find(x => x.id === serviceId);
+  if(!s){ alert("Servis kaydı bulunamadı."); return; }
+  const v = getVehicle(s.vehicleId);
+  const c = getCustomer(v?.customerId);
+  modalType = "pricing";
+  document.getElementById("modalTitle").textContent = "Servis Fiyatlandır";
+  document.getElementById("modalBody").innerHTML = `
+    <input type="hidden" name="serviceId" value="${s.id}">
+    <p class="notice"><b>${c?.name || "-"}</b> / ${v ? (v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate) : "-"}<br>${s.date || "-"} tarihli servis kaydı fiyatlandırılıyor.</p>
+    ${field("İşçilik Tutarı","laborAmount","number",Number(s.laborAmount || 0),false)}
+    ${field("Parça Tutarı","partsAmount","number",Number(s.partsAmount || 0),false)}
+    <div class="field"><label>Toplam Tutar</label><input id="serviceTotalPreview" type="text" value="${money(s.amount || 0)}" readonly></div>
+    ${textareaField("Fiyatlandırma Notu","pricingNote")}
+  `;
+  setTimeout(bindServiceTotalPreview, 0);
   modal.showModal();
 };
 
@@ -1035,10 +1182,44 @@ modalForm.addEventListener("submit", function(e){
     }
 
     const selectedItems = fd.getAll("items");
+    const laborAmount = isAdmin() ? Number(obj.laborAmount || 0) : 0;
+    const partsAmount = isAdmin() ? Number(obj.partsAmount || 0) : 0;
+    const totalAmount = laborAmount + partsAmount;
+    db.services.push({
+      id:newId("s"),
+      vehicleId:foundVehicle.id,
+      date:obj.date,
+      currentKm:currentKm,
+      nextKm:Number(obj.nextKm || 0),
+      items:selectedItems,
+      title:obj.title,
+      laborAmount:laborAmount,
+      partsAmount:partsAmount,
+      amount:totalAmount,
+      pricingStatus:isAdmin() ? "priced" : "pending",
+      pricedBy:isAdmin() ? (activeUser?.email || "-") : "",
+      pricedAt:isAdmin() ? new Date().toISOString() : "",
+      note:obj.note,
+      createdBy:activeUser?.email || "-",
+      createdByRole:activeUser?.role || "-",
+      createdAt:new Date().toISOString()
+    });
+  }
+  if(modalType === "pricing"){
+    if(!requireAdmin()) return;
+    const s = db.services.find(x => x.id === obj.serviceId);
+    if(!s){ alert("Servis kaydı bulunamadı."); return; }
     const laborAmount = Number(obj.laborAmount || 0);
     const partsAmount = Number(obj.partsAmount || 0);
-    const totalAmount = laborAmount + partsAmount;
-    db.services.push({ id:newId("s"), vehicleId:foundVehicle.id, date:obj.date, currentKm:currentKm, nextKm:Number(obj.nextKm || 0), items:selectedItems, title:obj.title, laborAmount:laborAmount, partsAmount:partsAmount, amount:totalAmount, note:obj.note, createdBy:activeUser?.email || "-", createdByRole:activeUser?.role || "-", createdAt:new Date().toISOString() });
+    s.laborAmount = laborAmount;
+    s.partsAmount = partsAmount;
+    s.amount = laborAmount + partsAmount;
+    s.pricingStatus = "priced";
+    s.pricedBy = activeUser?.email || "-";
+    s.pricedAt = new Date().toISOString();
+    if(obj.pricingNote){
+      s.pricingNote = obj.pricingNote;
+    }
   }
   if(modalType === "payment"){
     const typedCustomerName = safe(obj.customerName).trim();
@@ -1117,11 +1298,53 @@ window.importData = function(event){
 };
 window.resetAllData = function(){
   if(!requireAdmin()) return;
-  const ok = confirm("Tüm müşteri, araç, servis ve tahsilat kayıtları silinecek. Emin misin?");
+
+  const password = prompt("Silme şifresini giriniz:");
+
+  if(password !== DELETE_PASSWORD){
+    alert("Hatalı şifre!");
+    return;
+  }
+
+  const ok = confirm(
+    "DİKKAT!\n\nTüm müşteri, araç, servis ve tahsilat kayıtları silinecek.\n\nDevam etmek istiyor musun?"
+  );
+
   if(!ok) return;
-  db = { customers: [], vehicles: [], services: [], payments: [] };
+
+  db = {
+    customers: [],
+    vehicles: [],
+    services: [],
+    payments: []
+  };
+
   persist();
-  alert("Sistem temizlendi.");
+  alert("Tüm veriler silindi.");
+};
+
+window.deleteVehicle = function(vehicleId){
+  if(!requireAdmin()) return;
+
+  const password = prompt("Silme şifresini giriniz:");
+
+  if(password !== DELETE_PASSWORD){
+    alert("Hatalı şifre!");
+    return;
+  }
+
+  const v = getVehicle(vehicleId);
+  const plateText = v ? (v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate) : "Bu araç";
+
+  const ok = confirm(`${plateText} silinecek.\n\nBu araca ait servis ve tahsilat kayıtları da silinir.\n\nEmin misin?`);
+  if(!ok) return;
+
+  db.services = db.services.filter(s => s.vehicleId !== vehicleId);
+  db.payments = db.payments.filter(p => p.vehicleId !== vehicleId);
+  db.vehicles = db.vehicles.filter(v => v.id !== vehicleId);
+
+  persist();
+  alert("Araç ve bağlı kayıtları silindi.");
 };
 
 window.clearDemo = function(){
