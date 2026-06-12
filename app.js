@@ -5,6 +5,13 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  onSnapshot,
+  setDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { firebaseConfig, ADMIN_EMAILS, PERSONEL_EMAILS } from "./firebase-config.js";
 
 const STORE_KEY = "hickorkmaz_garaj_v7_data";
@@ -13,7 +20,12 @@ const DELETE_PASSWORD = "212198";
 
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
+const firestoreDb = getFirestore(firebaseApp);
+const SHARED_DATA_DOC = doc(firestoreDb, "garages", "hickorkmaz-garaj-v7");
 let activeUser = null;
+let unsubscribeSharedData = null;
+let isApplyingCloudData = false;
+let cloudDataLoaded = false;
 
 function normalizeEmail(email){
   return (email || "").toLocaleLowerCase("tr-TR").trim();
@@ -106,12 +118,68 @@ function loadData(){
     return structuredClone(seed);
   }
 }
+function normalizeDb(data){
+  return {
+    customers: Array.isArray(data?.customers) ? data.customers : [],
+    vehicles: Array.isArray(data?.vehicles) ? data.vehicles : [],
+    services: Array.isArray(data?.services) ? data.services : [],
+    payments: Array.isArray(data?.payments) ? data.payments : []
+  };
+}
+
+function hasAnyRecord(data){
+  const d = normalizeDb(data);
+  return d.customers.length || d.vehicles.length || d.services.length || d.payments.length;
+}
+
+async function saveCloudData(){
+  if(!activeUser || isApplyingCloudData) return;
+  try{
+    await setDoc(SHARED_DATA_DOC, {
+      ...normalizeDb(db),
+      updatedAt: serverTimestamp(),
+      updatedBy: activeUser.email || "-"
+    });
+  }catch(err){
+    console.error("Ortak kayıt havuzu kaydedilemedi:", err);
+    alert("Kayıt cihazına kaydedildi fakat ortak Firebase verisine gönderilemedi. İnternet bağlantını ve Firestore kurallarını kontrol et.");
+  }
+}
+
+function startSharedDataSync(){
+  if(unsubscribeSharedData) unsubscribeSharedData();
+  cloudDataLoaded = false;
+
+  unsubscribeSharedData = onSnapshot(SHARED_DATA_DOC, async (snap) => {
+    isApplyingCloudData = true;
+
+    if(snap.exists()){
+      db = normalizeDb(snap.data());
+      localStorage.setItem(STORE_KEY, JSON.stringify(db));
+      cloudDataLoaded = true;
+      isApplyingCloudData = false;
+      if(activeUser) render();
+      return;
+    }
+
+    // Firebase'te ortak veri henüz yoksa mevcut cihazdaki eski veriyi ilk ortak havuza taşı.
+    cloudDataLoaded = true;
+    isApplyingCloudData = false;
+    if(hasAnyRecord(db)) await saveCloudData();
+    if(activeUser) render();
+  }, (err) => {
+    isApplyingCloudData = false;
+    console.error("Ortak kayıt havuzu okunamadı:", err);
+    alert("Ortak kayıt havuzu okunamadı. Firestore etkin mi ve kurallar doğru mu kontrol et.");
+    if(activeUser) render();
+  });
+}
+
 function persist(){
+  db = normalizeDb(db);
   localStorage.setItem(STORE_KEY, JSON.stringify(db));
-  setupAuth();
-setupMobileMenu();
-applyAuthState();
-if(activeUser) render();
+  if(activeUser) saveCloudData();
+  if(activeUser) render();
 }
 function newId(prefix){ return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7); }
 function money(n){ return (Number(n)||0).toLocaleString("tr-TR", {maximumFractionDigits:0}) + " TL"; }
@@ -334,6 +402,7 @@ function setupAuth(){
   onAuthStateChanged(auth, (user) => {
     if(!user){
       activeUser = null;
+      if(unsubscribeSharedData){ unsubscribeSharedData(); unsubscribeSharedData = null; }
       applyAuthState();
       return;
     }
@@ -356,7 +425,7 @@ function setupAuth(){
     };
 
     applyAuthState();
-    render();
+    startSharedDataSync();
   });
 
   if(logoutBtn){
@@ -405,10 +474,7 @@ function openPage(page){
   document.getElementById("pageTitle").textContent = pages[page] || "Dashboard";
   document.getElementById("pageSubtitle").textContent = "Her ekranda isim, firma veya plaka ile global arama";
   clearSearchOnly();
-  setupAuth();
-setupMobileMenu();
-applyAuthState();
-if(activeUser) render();
+  render();
 }
 
 function stat(label,value,cls=""){
@@ -500,7 +566,7 @@ function renderSettings(){
   document.getElementById("settings").innerHTML = `
     <div class="panel">
       <h3>Ayarlar</h3>
-      <p class="notice">Firebase e-posta/şifre girişi aktiftir. Admin ve personel e-posta listeleri <b>firebase-config.js</b> dosyasından düzenlenir.</p>
+      <p class="notice">Firebase e-posta/şifre girişi ve ortak Firestore kayıt havuzu aktiftir. Admin ve personel aynı müşteri, araç, servis ve tahsilat verilerini görür.</p>
       <div class="toolbar">
         <button class="btn" onclick="exportData()">Verileri Yedekle</button>
         <button class="btn" onclick="document.getElementById('importFile').click()">Yedekten Yükle</button>
@@ -512,7 +578,7 @@ function renderSettings(){
     <div class="panel">
       <h3>Yetki Listesi</h3>
       <p class="notice">
-        Admin tüm yetkilere sahiptir. Personel sadece müşteri/firma, araç ve servis kaydı yapabilir.
+        Admin tüm yetkilere sahiptir. Personel müşteri/firma, araç ve servis kaydı yapabilir; kayıtlar tüm kullanıcılarda ortak görünür.
         Yetki vermek için ZIP içindeki <b>firebase-config.js</b> dosyasında ADMIN_EMAILS ve PERSONEL_EMAILS listelerini düzenle.
       </p>
       <pre class="code-box">ADMIN_EMAILS = ["admin@aractakip.com"]

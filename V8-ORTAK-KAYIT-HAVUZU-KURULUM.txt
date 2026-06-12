@@ -1,0 +1,39 @@
+V8 ORTAK KAYIT HAVUZU GÜNCELLEMESİ
+
+Bu sürümde kayıtlar artık tarayıcıya özel localStorage ile sınırlı kalmaz.
+Admin ve personel aynı Firebase Firestore ortak veri havuzunu kullanır.
+
+Yapılan değişiklikler:
+1. app.js içine Firestore bağlantısı eklendi.
+2. Ortak kayıt dokümanı: garages / hickorkmaz-garaj-v7
+3. Müşteriler, araçlar, servis kayıtları ve tahsilatlar tüm kullanıcılarda ortak görünür.
+4. Personel yetkisi yine kısıtlıdır; ödeme, rapor, ayarlar gibi admin alanları kapalı kalır.
+5. Eski cihazdaki mevcut localStorage verisi, Firestore boşsa ilk girişte ortak havuza taşınır.
+
+Firebase Console yapılacak işlem:
+- Firestore Database bölümünden veritabanı oluştur.
+- Rules kısmına aşağıdaki kuralı geçici/temel kullanım için ekleyebilirsin:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /garages/hickorkmaz-garaj-v7 {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+
+Not:
+Bu kural sadece giriş yapmış Firebase kullanıcılarına izin verir. Firebase Authentication içinde sadece yetkili admin/personel hesapları bulunmalıdır.
+
+GitHub yükleme:
+- index.html
+- app.js
+- service-worker.js
+- firebase-config.js
+- style.css ve görseller
+aynı klasöre yüklenmelidir.
+
+Güncelleme sonrası telefonda/PC'de eski cache kalırsa:
+- Sayfayı birkaç kez yenile.
+- Gerekirse tarayıcı site verilerini temizle veya PWA'yı kaldırıp tekrar ekle.

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arac-servis-v7-cache-fix-1781018881';
+const CACHE_NAME = 'arac-servis-v7-ortak-kayit-1781020002';
 const ASSETS = [
   './',
   './index.html',
