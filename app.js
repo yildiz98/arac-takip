@@ -295,7 +295,12 @@ function paymentTypeText(p){
 function servicePricingPending(s){
   return s?.pricingStatus === "pending" || (Number(s?.amount || 0) === 0 && s?.createdByRole === "personel");
 }
+function canViewFinance(){ return isAdmin(); }
+function financeHiddenText(){ return "🔒 Admin"; }
+function financeText(value){ return canViewFinance() ? money(value) : financeHiddenText(); }
+function financeClass(value){ return canViewFinance() ? (Number(value||0)>0 ? "bad" : "good") : "muted"; }
 function serviceMoneyText(s, field){
+  if(!canViewFinance()) return financeHiddenText();
   return servicePricingPending(s) ? "Fiyat bekliyor" : money(s?.[field] || 0);
 }
 function servicePricingBadge(s){
@@ -615,18 +620,18 @@ PERSONEL_EMAILS = ["personel1@aractakip.com"]</pre>
 }
 
 function customersTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Ad Soyad / Firma</th><th>Telefon</th><th>Tür</th><th>Araç Sayısı</th><th>Toplam Borç</th><th>Toplam Ödeme</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.phone || "-"}</td><td>${c.type || "-"}</td><td>${getVehiclesByCustomer(c.id).length}</td><td class="amount ${customerDebt(c.id)>0?"bad":"good"}">${money(customerDebt(c.id))}</td><td class="amount good">${money(customerPaid(c.id))}</td><td><button class="small-btn" onclick="openCustomer('${c.id}')">Detay</button>${isAdmin() ? ` <button class="small-btn" onclick="printCustomerAccount('${c.id}')">Yazdır</button>` : ``}</td></tr>`).join("") || emptyRow(7)}
+  return `<div class="table-wrap"><table><thead><tr><th>Ad Soyad / Firma</th><th>Telefon</th><th>Tür</th><th>Araç Sayısı</th>${isAdmin() ? `<th>Toplam Borç</th><th>Toplam Ödeme</th>` : ``}<th>İşlem</th></tr></thead><tbody>
+  ${list.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.phone || "-"}</td><td>${c.type || "-"}</td><td>${getVehiclesByCustomer(c.id).length}</td>${isAdmin() ? `<td class="amount ${customerDebt(c.id)>0?"bad":"good"}">${money(customerDebt(c.id))}</td><td class="amount good">${money(customerPaid(c.id))}</td>` : ``}<td><button class="small-btn" onclick="openCustomer('${c.id}')">Detay</button>${isAdmin() ? ` <button class="small-btn" onclick="printCustomerAccount('${c.id}')">Yazdır</button>` : ``}</td></tr>`).join("") || emptyRow(isAdmin()?7:5)}
   </tbody></table></div>`;
 }
 function vehiclesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th>${isAdmin() ? `<th>Plaka Borcu</th>` : ``}<th>Not</th><th>İşlem</th></tr></thead><tbody>
   ${list.map(v=>`<tr>
     <td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td>
     <td>${getCustomer(v.customerId)?.name || "-"}</td>
     <td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td>
     <td>${lastServiceDate(v.id)}</td>
-    <td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td>
+    ${isAdmin() ? `<td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td>` : ``}
     <td>${v.note || "-"}</td>
     <td>
       <button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button>
@@ -636,11 +641,11 @@ function vehiclesTable(list){
         <button class="small-btn danger-btn" onclick="deleteVehicle('${v.id}')">Sil</button>
       ` : ``}
     </td>
-  </tr>`).join("") || emptyRow(7)}
+  </tr>`).join("") || emptyRow(isAdmin()?7:6)}
   </tbody></table></div>`;
 }
 function servicesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>Durum</th><th>İşçilik</th><th>Parça</th><th>Toplam</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri/Firma</th><th>Geldiği KM</th><th>Sonraki Bakım KM</th><th>Seçilen İşlemler</th><th>Durum</th>${isAdmin() ? `<th>İşçilik</th><th>Parça</th><th>Toplam</th>` : ``}<th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
   ${list.map(s=>{
     const v=getVehicle(s.vehicleId);
     const c=getCustomer(v?.customerId);
@@ -652,9 +657,7 @@ function servicesTable(list){
       <td>${kmFormat(s.nextKm)}</td>
       <td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td>
       <td>${servicePricingBadge(s)}</td>
-      <td class="amount ${servicePricingPending(s)?"warn":"good"}">${serviceMoneyText(s,"laborAmount")}</td>
-      <td class="amount ${servicePricingPending(s)?"warn":"good"}">${serviceMoneyText(s,"partsAmount")}</td>
-      <td class="amount ${servicePricingPending(s)?"warn":"good"}">${serviceMoneyText(s,"amount")}</td>
+      ${isAdmin() ? `<td class="amount ${servicePricingPending(s)?"warn":"good"}">${serviceMoneyText(s,"laborAmount")}</td><td class="amount ${servicePricingPending(s)?"warn":"good"}">${serviceMoneyText(s,"partsAmount")}</td><td class="amount ${servicePricingPending(s)?"warn":"good"}">${serviceMoneyText(s,"amount")}</td>` : ``}
       <td>${s.note || "-"}</td>
       <td>${s.createdBy || "-"}</td>
       <td>
@@ -665,7 +668,7 @@ function servicesTable(list){
         <button class="small-btn" onclick="shareSingleServiceWhatsApp('${s.id}')">WP</button>` : `<span class="badge">Personel</span>`}
       </td>
     </tr>`;
-  }).join("") || emptyRow(13)}
+  }).join("") || emptyRow(isAdmin()?13:10)}
   </tbody></table></div>`;
 }
 function paymentsTable(list){
@@ -707,7 +710,7 @@ window.openCustomer = function(customerId){
     <div class="detail-title"><div><span class="badge">Müşteri / Firma Kartı</span><h2>${c.name}</h2><p>${c.phone || "-"} ${c.note ? " • " + c.note : ""}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">${isAdmin() ? `<button class="btn" onclick="printCustomerAccount('${c.id}')">Müşteri Hesabı Yazdır</button>` : ``}<button class="btn" onclick="openPage('${lastPageBeforeDetail}')">Geri</button></div></div>
     <div class="customer-card">
       <div class="info-box"><span>Ad soyad / firma adı</span><b>${c.name}</b></div><div class="info-box"><span>Telefon</span><b>${c.phone || "-"}</b></div><div class="info-box"><span>Araç sayısı</span><b>${vehicles.length}</b></div>
-      <div class="info-box"><span>Toplam borç</span><b class="${customerDebt(c.id)>0?"bad":"good"}">${money(customerDebt(c.id))}</b></div><div class="info-box"><span>Toplam ödeme</span><b class="good">${money(customerPaid(c.id))}</b></div><div class="info-box"><span>Toplam işlem tutarı</span><b>${money(customerTotal(c.id))}</b></div>
+      ${isAdmin() ? `<div class="info-box"><span>Toplam borç</span><b class="${customerDebt(c.id)>0?"bad":"good"}">${money(customerDebt(c.id))}</b></div><div class="info-box"><span>Toplam ödeme</span><b class="good">${money(customerPaid(c.id))}</b></div><div class="info-box"><span>Toplam işlem tutarı</span><b>${money(customerTotal(c.id))}</b></div>` : `<div class="info-box"><span>Finans Bilgileri</span><b class="muted">🔒 Sadece admin görür</b></div>`}
     </div>
     <div class="panel"><div class="panel-head"><h3>Kayıtlı Araçlar</h3></div>${vehiclesTable(vehicles)}</div>`;
   openPage("detail");
@@ -1109,9 +1112,9 @@ window.openVehicle = function(vehicleId){
     <div class="customer-card">
       <div class="info-box"><span>Plaka / Tanım</span><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></div><div class="info-box"><span>Sahibi / Firma</span><b>${c?.name || "-"}</b></div><div class="info-box"><span>Marka model</span><b>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</b></div>
       <div class="info-box"><span>Son KM</span><b>${kmFormat(vehicleLastKm(v.id))}</b></div><div class="info-box"><span>Bir Sonraki Bakım KM</span><b>${kmFormat(vehicleNextKm(v.id))}</b></div><div class="info-box"><span>Kalan KM</span><b class="${remainingKm(v.id) !== null && remainingKm(v.id) <= 1000 ? "bad" : "warn"}">${remainingKm(v.id) === null ? "-" : kmFormat(remainingKm(v.id))}</b></div>
-      <div class="info-box"><span>Toplam borç</span><b class="${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</b></div><div class="info-box"><span>Toplam işlem</span><b>${money(vehicleTotal(v.id))}</b></div><div class="info-box"><span>Toplam tahsilat</span><b class="good">${money(vehiclePaid(v.id))}</b></div>
+      ${isAdmin() ? `<div class="info-box"><span>Toplam borç</span><b class="${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</b></div><div class="info-box"><span>Toplam işlem</span><b>${money(vehicleTotal(v.id))}</b></div><div class="info-box"><span>Toplam tahsilat</span><b class="good">${money(vehiclePaid(v.id))}</b></div>` : `<div class="info-box"><span>Finans Bilgileri</span><b class="muted">🔒 Sadece admin görür</b></div>`}
     </div>
-    <div class="grid two"><div class="panel"><h3>Servis Geçmişi</h3>${servicesTable(getServicesByVehicle(v.id))}</div><div class="panel"><h3>Tahsilat Geçmişi</h3>${paymentsTable(getPaymentsByVehicle(v.id))}</div></div>
+    ${isAdmin() ? `<div class="grid two"><div class="panel"><h3>Servis Geçmişi</h3>${servicesTable(getServicesByVehicle(v.id))}</div><div class="panel"><h3>Tahsilat Geçmişi</h3>${paymentsTable(getPaymentsByVehicle(v.id))}</div></div>` : `<div class="panel"><h3>Servis Geçmişi</h3>${servicesTable(getServicesByVehicle(v.id))}</div>`}
     <div class="panel"><h3>Notlar</h3><p class="notice">${v.note || "Bu plakaya ait not bulunmuyor."}</p></div>`;
   openPage("detail");
 };
@@ -1135,7 +1138,7 @@ searchInput.addEventListener("input", function(){
     html += `<div class="search-title">Müşteri / Firma Sonuçları</div>`;
     html += customerMatches.map(c=>{
       const count = getVehiclesByCustomer(c.id).length;
-      return `<div class="search-row" onclick="openCustomer('${c.id}')"><b>👤 ${c.name}</b><span>${count} kayıtlı plaka • toplam borç: ${money(customerDebt(c.id))}</span></div>`;
+      return `<div class="search-row" onclick="openCustomer('${c.id}')"><b>👤 ${c.name}</b><span>${count} kayıtlı plaka${isAdmin() ? ` • toplam borç: ${money(customerDebt(c.id))}` : ``}</span></div>`;
     }).join("");
   }
   if(vehicleMatches.length){
