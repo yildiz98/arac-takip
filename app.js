@@ -5,27 +5,14 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import {
-  getFirestore,
-  doc,
-  onSnapshot,
-  setDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { firebaseConfig, ADMIN_EMAILS, PERSONEL_EMAILS } from "./firebase-config.js";
 
 const STORE_KEY = "hickorkmaz_garaj_v7_data";
 const AUTH_KEY = "hickorkmaz_garaj_v7_google_auth";
-const DELETE_PASSWORD = "212198";
 
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
-const firestoreDb = getFirestore(firebaseApp);
-const SHARED_DATA_DOC = doc(firestoreDb, "garages", "hickorkmaz-garaj-v7");
 let activeUser = null;
-let unsubscribeSharedData = null;
-let isApplyingCloudData = false;
-let cloudDataLoaded = false;
 
 function normalizeEmail(email){
   return (email || "").toLocaleLowerCase("tr-TR").trim();
@@ -118,68 +105,12 @@ function loadData(){
     return structuredClone(seed);
   }
 }
-function normalizeDb(data){
-  return {
-    customers: Array.isArray(data?.customers) ? data.customers : [],
-    vehicles: Array.isArray(data?.vehicles) ? data.vehicles : [],
-    services: Array.isArray(data?.services) ? data.services : [],
-    payments: Array.isArray(data?.payments) ? data.payments : []
-  };
-}
-
-function hasAnyRecord(data){
-  const d = normalizeDb(data);
-  return d.customers.length || d.vehicles.length || d.services.length || d.payments.length;
-}
-
-async function saveCloudData(){
-  if(!activeUser || isApplyingCloudData) return;
-  try{
-    await setDoc(SHARED_DATA_DOC, {
-      ...normalizeDb(db),
-      updatedAt: serverTimestamp(),
-      updatedBy: activeUser.email || "-"
-    });
-  }catch(err){
-    console.error("Ortak kayıt havuzu kaydedilemedi:", err);
-    alert("Kayıt cihazına kaydedildi fakat ortak Firebase verisine gönderilemedi. İnternet bağlantını ve Firestore kurallarını kontrol et.");
-  }
-}
-
-function startSharedDataSync(){
-  if(unsubscribeSharedData) unsubscribeSharedData();
-  cloudDataLoaded = false;
-
-  unsubscribeSharedData = onSnapshot(SHARED_DATA_DOC, async (snap) => {
-    isApplyingCloudData = true;
-
-    if(snap.exists()){
-      db = normalizeDb(snap.data());
-      localStorage.setItem(STORE_KEY, JSON.stringify(db));
-      cloudDataLoaded = true;
-      isApplyingCloudData = false;
-      if(activeUser) render();
-      return;
-    }
-
-    // Firebase'te ortak veri henüz yoksa mevcut cihazdaki eski veriyi ilk ortak havuza taşı.
-    cloudDataLoaded = true;
-    isApplyingCloudData = false;
-    if(hasAnyRecord(db)) await saveCloudData();
-    if(activeUser) render();
-  }, (err) => {
-    isApplyingCloudData = false;
-    console.error("Ortak kayıt havuzu okunamadı:", err);
-    alert("Ortak kayıt havuzu okunamadı. Firestore etkin mi ve kurallar doğru mu kontrol et.");
-    if(activeUser) render();
-  });
-}
-
 function persist(){
-  db = normalizeDb(db);
   localStorage.setItem(STORE_KEY, JSON.stringify(db));
-  if(activeUser) saveCloudData();
-  if(activeUser) render();
+  setupAuth();
+setupMobileMenu();
+applyAuthState();
+if(activeUser) render();
 }
 function newId(prefix){ return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7); }
 function money(n){ return (Number(n)||0).toLocaleString("tr-TR", {maximumFractionDigits:0}) + " TL"; }
@@ -402,7 +333,6 @@ function setupAuth(){
   onAuthStateChanged(auth, (user) => {
     if(!user){
       activeUser = null;
-      if(unsubscribeSharedData){ unsubscribeSharedData(); unsubscribeSharedData = null; }
       applyAuthState();
       return;
     }
@@ -425,7 +355,7 @@ function setupAuth(){
     };
 
     applyAuthState();
-    startSharedDataSync();
+    render();
   });
 
   if(logoutBtn){
@@ -474,7 +404,10 @@ function openPage(page){
   document.getElementById("pageTitle").textContent = pages[page] || "Dashboard";
   document.getElementById("pageSubtitle").textContent = "Her ekranda isim, firma veya plaka ile global arama";
   clearSearchOnly();
-  render();
+  setupAuth();
+setupMobileMenu();
+applyAuthState();
+if(activeUser) render();
 }
 
 function stat(label,value,cls=""){
@@ -497,13 +430,13 @@ function renderDashboard(){
     .sort((a,b)=>(a.remaining ?? 999999999)-(b.remaining ?? 999999999))
     .slice(0,8);
 
- document.getElementById("dashboard").innerHTML = `
+  document.getElementById("dashboard").innerHTML = `
     <div class="grid stats">
-      ${stat('<i class="fa-solid fa-car"></i> Toplam Araç', db.vehicles.length)}
-      ${stat('<i class="fa-solid fa-user-group"></i> Toplam Müşteri/Firma', db.customers.length)}
-      ${stat('<i class="fa-solid fa-wallet"></i> Toplam Alacak', money(totalDebt), totalDebt>0?"bad":"good")}
-      ${stat('<i class="fa-solid fa-chart-line"></i> Toplam Ciro', money(totalRevenue), "good")}
-      ${stat('<i class="fa-solid fa-money-bill-wave"></i> Bugünkü Tahsilat', money(todayPaid), "good")}
+      ${stat("Toplam Araç", db.vehicles.length)}
+      ${stat("Toplam Müşteri/Firma", db.customers.length)}
+      ${stat("Toplam Alacak", money(totalDebt), totalDebt>0?"bad":"good")}
+      ${stat("Toplam Ciro", money(totalRevenue))}
+      ${stat("Bugünkü Tahsilat", money(todayPaid), "good")}
     </div>
     <div class="grid two">
       <div class="panel"><div class="panel-head"><h3>Son Servis Kayıtları</h3><button class="small-btn" onclick="openPage('services')">Tümü</button></div>${servicesTable(recentServices)}</div>
@@ -566,7 +499,7 @@ function renderSettings(){
   document.getElementById("settings").innerHTML = `
     <div class="panel">
       <h3>Ayarlar</h3>
-      <p class="notice">Firebase e-posta/şifre girişi ve ortak Firestore kayıt havuzu aktiftir. Admin ve personel aynı müşteri, araç, servis ve tahsilat verilerini görür.</p>
+      <p class="notice">Firebase e-posta/şifre girişi aktiftir. Admin ve personel e-posta listeleri <b>firebase-config.js</b> dosyasından düzenlenir.</p>
       <div class="toolbar">
         <button class="btn" onclick="exportData()">Verileri Yedekle</button>
         <button class="btn" onclick="document.getElementById('importFile').click()">Yedekten Yükle</button>
@@ -578,7 +511,7 @@ function renderSettings(){
     <div class="panel">
       <h3>Yetki Listesi</h3>
       <p class="notice">
-        Admin tüm yetkilere sahiptir. Personel müşteri/firma, araç ve servis kaydı yapabilir; kayıtlar tüm kullanıcılarda ortak görünür.
+        Admin tüm yetkilere sahiptir. Personel sadece müşteri/firma, araç ve servis kaydı yapabilir.
         Yetki vermek için ZIP içindeki <b>firebase-config.js</b> dosyasında ADMIN_EMAILS ve PERSONEL_EMAILS listelerini düzenle.
       </p>
       <pre class="code-box">ADMIN_EMAILS = ["admin@aractakip.com"]
@@ -592,23 +525,12 @@ function customersTable(list){
   </tbody></table></div>`;
 }
 function vehiclesTable(list){
-  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlem</th></tr></thead><tbody>
-  ${list.map(v=>`<tr>
-    <td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td>
-    <td>${getCustomer(v.customerId)?.name || "-"}</td>
-    <td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td>
-    <td>${lastServiceDate(v.id)}</td>
-    <td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td>
-    <td>${v.note || "-"}</td>
-    <td>
+  return `<div class="table-wrap"><table><thead><tr><th>Plaka</th><th>Sahibi / Firma</th><th>Araç</th><th>Son Servis</th><th>Plaka Borcu</th><th>Not</th><th>İşlemi Yapan</th><th>İşlem</th></tr></thead><tbody>
+  ${list.map(v=>`<tr><td><b>${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</b></td><td>${getCustomer(v.customerId)?.name || "-"}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(" ") || "-"}</td><td>${lastServiceDate(v.id)}</td><td class="amount ${vehicleDebt(v.id)>0?"bad":"good"}">${money(vehicleDebt(v.id))}</td><td>${v.note || "-"}</td><td>
       <button class="small-btn" onclick="openVehicle('${v.id}')">Geçmişi Gör</button>
-      ${isAdmin() ? `
-        <button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
-        <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>
-        <button class="small-btn danger-btn" onclick="deleteVehicle('${v.id}')">Sil</button>
-      ` : ``}
-    </td>
-  </tr>`).join("") || emptyRow(7)}
+      ${isAdmin() ? `<button class="small-btn" onclick="printServiceHistory('${v.id}')">Yazdır</button>
+      <button class="small-btn" onclick="shareServiceHistoryWhatsApp('${v.id}')">WP</button>` : ``}
+    </td></tr>`).join("") || emptyRow(7)}
   </tbody></table></div>`;
 }
 function servicesTable(list){
@@ -693,52 +615,22 @@ function canOutput(){
 function serviceSinglePlainText(serviceId){
   const s = db.services.find(x => x.id === serviceId);
   if(!s) return "Servis kaydı bulunamadı.";
-
   const v = getVehicle(s.vehicleId);
   const c = getCustomer(v?.customerId);
-
-  const vehicleName =
-    `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
-
-  const vehicleModel =
-    [v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-";
-
-  let text = `HİÇKORKMAZ GARAJ\n`;
-  text += `------------------------------\n\n`;
-
-  text += `[Müşteri/Firma]\n`;
-  text += `${c?.name || "-"}\n\n`;
-
-  text += `[Araç]\n`;
-  text += `${vehicleName}\n`;
-  text += `${vehicleModel}\n\n`;
-
-  text += `[Servis Tarihi]\n`;
-  text += `${s.date || "-"}\n\n`;
-
-  text += `[KM Bilgileri]\n`;
+  const vehicleName = `${v?.noPlateName ? v.noPlateName + " / " : ""}${v?.plate || "-"}`;
+  let text = `Hiçkorkmaz Garaj - Servis Kaydı\n\n`;
+  text += `Müşteri/Firma: ${c?.name || "-"}\n`;
+  text += `Araç: ${vehicleName}\n`;
+  text += `Marka/Model: ${[v?.brand,v?.model,v?.year].filter(Boolean).join(" ") || "-"}\n`;
+  text += `Tarih: ${s.date || "-"}\n`;
   text += `Geldiği KM: ${kmFormat(s.currentKm)}\n`;
-  text += `Sonraki Bakım: ${kmFormat(s.nextKm)}\n\n`;
-
-  text += `[Yapılan İşlemler]\n`;
-  text += `${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n\n`;
-
-  text += `[Ücret Bilgileri]\n`;
+  text += `Bir Sonraki Bakım KM: ${kmFormat(s.nextKm)}\n`;
+  text += `Yapılan İşlemler: ${serviceItemsText(s)}${s.title ? " / " + s.title : ""}\n`;
   text += `İşçilik: ${money(s.laborAmount || 0)}\n`;
   text += `Parça: ${money(s.partsAmount || 0)}\n`;
-  text += `Toplam: ${money(s.amount)}\n\n`;
-
-  if(s.note){
-    text += `[Not]\n`;
-    text += `${s.note}\n\n`;
-  }
-
-  text += `[İşlemi Yapan]\n`;
-  text += `${s.createdBy || "-"}\n\n`;
-
-  text += `Teşekkür ederiz.\n`;
-  text += `Hiçkorkmaz Garaj`;
-
+  text += `Toplam: ${money(s.amount)}\n`;
+  text += `Not: ${s.note || "-"}\n` +
+    `İşlemi Yapan: ${s.createdBy || "-"}\n`;
   return text;
 }
 
@@ -1225,53 +1117,11 @@ window.importData = function(event){
 };
 window.resetAllData = function(){
   if(!requireAdmin()) return;
-
-  const password = prompt("Silme şifresini giriniz:");
-
-  if(password !== DELETE_PASSWORD){
-    alert("Hatalı şifre!");
-    return;
-  }
-
-  const ok = confirm(
-    "DİKKAT!\n\nTüm müşteri, araç, servis ve tahsilat kayıtları silinecek.\n\nDevam etmek istiyor musun?"
-  );
-
+  const ok = confirm("Tüm müşteri, araç, servis ve tahsilat kayıtları silinecek. Emin misin?");
   if(!ok) return;
-
-  db = {
-    customers: [],
-    vehicles: [],
-    services: [],
-    payments: []
-  };
-
+  db = { customers: [], vehicles: [], services: [], payments: [] };
   persist();
-  alert("Tüm veriler silindi.");
-};
-
-window.deleteVehicle = function(vehicleId){
-  if(!requireAdmin()) return;
-
-  const password = prompt("Silme şifresini giriniz:");
-
-  if(password !== DELETE_PASSWORD){
-    alert("Hatalı şifre!");
-    return;
-  }
-
-  const v = getVehicle(vehicleId);
-  const plateText = v ? (v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate) : "Bu araç";
-
-  const ok = confirm(`${plateText} silinecek.\n\nBu araca ait servis ve tahsilat kayıtları da silinir.\n\nEmin misin?`);
-  if(!ok) return;
-
-  db.services = db.services.filter(s => s.vehicleId !== vehicleId);
-  db.payments = db.payments.filter(p => p.vehicleId !== vehicleId);
-  db.vehicles = db.vehicles.filter(v => v.id !== vehicleId);
-
-  persist();
-  alert("Araç ve bağlı kayıtları silindi.");
+  alert("Sistem temizlendi.");
 };
 
 window.clearDemo = function(){
