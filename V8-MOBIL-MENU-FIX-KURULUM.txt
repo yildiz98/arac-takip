@@ -1,0 +1,17 @@
+V8 MOBİL MENÜ PWA FIX
+
+Bu güncellemede telefon ana ekran/PWA kullanımında sol menünün takılı kalma sorunu için düzeltme yapıldı.
+
+Yapılanlar:
+- setupMobileMenu() tekrar tekrar event bağlamayacak şekilde düzenlendi.
+- Mobil menüye touchend desteği eklendi.
+- Ana ekrandan tekrar açılınca takılı menü durumu sıfırlanır.
+- Mobil z-index değerleri güçlendirildi.
+- Service worker cache adı yenilendi.
+
+GitHub'a yüklemede özellikle şu dosyaları değiştir:
+- app.js
+- style.css
+- service-worker.js
+
+Yükledikten sonra telefonda eski PWA'yı kaldırıp siteyi tekrar ana ekrana eklemek en temiz test yöntemidir.

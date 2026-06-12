@@ -327,20 +327,35 @@ function setupMobileMenu(){
 
   if(!btn || !sidebar || !overlay) return;
 
+  // PWA/telefon kullanımında aynı eventlerin tekrar bağlanmasını engeller.
+  if(btn.dataset.menuReady === "1") return;
+  btn.dataset.menuReady = "1";
+
   const close = () => {
     sidebar.classList.remove("mobile-open");
     overlay.classList.remove("show");
+    document.body.classList.remove("menu-open");
   };
 
-  btn.addEventListener("click", () => {
+  const toggle = (e) => {
+    if(e) e.preventDefault();
     sidebar.classList.toggle("mobile-open");
     overlay.classList.toggle("show");
-  });
+    document.body.classList.toggle("menu-open", sidebar.classList.contains("mobile-open"));
+  };
 
+  btn.addEventListener("click", toggle);
+  btn.addEventListener("touchend", toggle, { passive:false });
   overlay.addEventListener("click", close);
+  overlay.addEventListener("touchend", close, { passive:false });
 
   document.querySelectorAll(".menu-item").forEach(item => {
     item.addEventListener("click", close);
+  });
+
+  window.addEventListener("pageshow", () => {
+    // Ana ekrandan açılınca takılı kalmış menü durumunu sıfırlar.
+    close();
   });
 }
 

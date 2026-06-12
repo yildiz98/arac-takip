@@ -752,3 +752,23 @@ td,th{
   border-color:#22c55e !important;
   font-weight:800;
 }
+
+
+/* V8 Mobil Menü PWA Fix */
+@media(max-width:820px){
+  .mobile-menu-btn{
+    position:relative;
+    z-index:120;
+    touch-action:manipulation;
+  }
+  .mobile-overlay.show{
+    z-index:100!important;
+  }
+  .sidebar{
+    z-index:110!important;
+    will-change:left;
+  }
+  body.menu-open{
+    overflow:hidden;
+  }
+}
