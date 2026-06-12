@@ -916,4 +916,29 @@ th{
   box-shadow:
     0 15px 35px rgba(0,0,0,.25) !important;
 }
+/* HİÇKORKMAZ MAVİ TEMA */
 
+.card .label i,
+.card .value,
+th{
+  color:#1e5bbf !important;
+}
+
+.quick-actions .action,
+#btnCustomer,
+#btnVehicle,
+#btnService,
+#btnPayment{
+  background:#1e5bbf !important;
+  border:1px solid #1e5bbf !important;
+  color:#fff !important;
+}
+
+.quick-actions .action:hover{
+  background:#0f2f6e !important;
+}
+
+.menu-item.active{
+  background:#1e5bbf !important;
+  color:#fff !important;
+}
