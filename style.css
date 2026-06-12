@@ -850,3 +850,70 @@ th{
   background:#00e5ff;
   border-radius:20px;
 }
+/* HİÇKORKMAZ MAVİ TEMA DÜZELTME */
+
+:root{
+  --garage-blue:#1e5bbf;
+  --garage-blue-dark:#0f2f6e;
+}
+
+/* Kart üst çizgileri */
+.card,
+.stat-card{
+  border-color:rgba(30,91,191,.35) !important;
+}
+
+/* Dashboard kart ikonları */
+.card .label i{
+  color:var(--garage-blue) !important;
+  text-shadow:none !important;
+}
+
+/* Tablo başlıkları */
+th{
+  color:var(--garage-blue) !important;
+  background:rgba(30,91,191,.08) !important;
+}
+
+/* Menü aktif */
+.menu-item.active{
+  background:linear-gradient(
+    135deg,
+    var(--garage-blue),
+    var(--garage-blue-dark)
+  ) !important;
+
+  color:#fff !important;
+}
+
+/* Alt hızlı işlem butonları */
+.quick-actions .action,
+#btnCustomer,
+#btnVehicle,
+#btnService,
+#btnPayment{
+  background:linear-gradient(
+    135deg,
+    var(--garage-blue),
+    var(--garage-blue-dark)
+  ) !important;
+
+  border:1px solid var(--garage-blue) !important;
+  color:#fff !important;
+}
+
+.quick-actions .action:hover{
+  filter:brightness(1.1);
+}
+
+/* Dashboard değerleri */
+.card .value{
+  color:var(--garage-blue) !important;
+}
+
+/* Üst bar glow kaldır */
+.header{
+  box-shadow:
+    0 15px 35px rgba(0,0,0,.25) !important;
+}
+
