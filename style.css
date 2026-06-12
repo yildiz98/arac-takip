@@ -811,7 +811,7 @@ td,th{
 
 th{
   background:rgba(0,229,255,.08) !important;
-  color:#00e5ff !important;
+  color:#1e5bbf !important;
   font-weight:700 !important;
 }
 
@@ -847,7 +847,7 @@ th{
 }
 
 ::-webkit-scrollbar-thumb{
-  background:#00e5ff;
+  background:#1e5bbf;
   border-radius:20px;
 }
 /* HİÇKORKMAZ MAVİ TEMA DÜZELTME */
