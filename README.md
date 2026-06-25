@@ -17,3 +17,10 @@ V9.9 Rapor & Borç Grafik Güncellemesi:
 - Raporlar sayfasına sadece okunur aylık ciro, tahsilat, servis dağılımı ve ödeme durumu grafikleri eklendi.
 - Borç Takibi sayfasına sadece okunur borç yaşlandırma ve borç trend grafikleri eklendi.
 - Mevcut veri anahtarı ve Firebase ayarları korunmuştur.
+
+
+V9.9.1 Giriş Ekranı Düzenlemesi:
+- Giriş ekranı koyu mavi kurumsal arka plana alındı.
+- Login kartı sade beyaz, ortalı ve mobil uyumlu hale getirildi.
+- Logo, inputlar ve giriş butonu Hiçkorkmaz Garage renklerine göre düzenlendi.
+- Cache sürümü yenilendi.

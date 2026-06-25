@@ -1177,3 +1177,115 @@ body{background:linear-gradient(135deg,#061124 0%,#0b1830 50%,#071226 100%)!impo
   .rank-row{grid-template-columns:1fr!important;gap:6px!important;}
   .rank-row b{text-align:left!important;}
 }
+
+
+/* ===== V9.9.1 GİRİŞ EKRANI DÜZENLEME =====
+   Login ekranı Hiçkorkmaz Garage logosuna uygun sade, koyu mavi ve mobil uyumlu hale getirildi. */
+.login-screen{
+  position:fixed!important;
+  inset:0!important;
+  z-index:9999!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:22px!important;
+  background:
+    radial-gradient(circle at top center, rgba(47,107,255,.18), transparent 34%),
+    linear-gradient(180deg,#083a8f 0%,#082b6d 42%,#061f50 100%)!important;
+}
+.login-card{
+  width:min(380px,92vw)!important;
+  background:#ffffff!important;
+  color:#061b49!important;
+  border:0!important;
+  border-radius:24px!important;
+  padding:28px 26px 30px!important;
+  box-shadow:0 26px 70px rgba(0,0,0,.34)!important;
+  text-align:center!important;
+}
+.login-brand-img{
+  width:168px!important;
+  height:168px!important;
+  max-width:72%!important;
+  object-fit:contain!important;
+  display:block!important;
+  margin:0 auto 16px!important;
+  padding:0!important;
+  border-radius:16px!important;
+  background:#07398d!important;
+  box-shadow:0 16px 34px rgba(6,48,128,.22)!important;
+  filter:none!important;
+}
+.login-card h1{
+  margin:0!important;
+  color:#061b49!important;
+  font-size:24px!important;
+  line-height:1.15!important;
+  font-weight:900!important;
+  letter-spacing:-.02em!important;
+}
+.login-card p{
+  color:#64748b!important;
+  margin:8px 0 18px!important;
+  font-size:14px!important;
+}
+.login-card .field{
+  margin:12px 0!important;
+  gap:6px!important;
+  text-align:left!important;
+}
+.login-card .field label{
+  color:#7c8aa5!important;
+  font-size:12px!important;
+  font-weight:700!important;
+}
+.login-card .field input{
+  height:48px!important;
+  border-radius:10px!important;
+  background:#0b1830!important;
+  color:#ffffff!important;
+  border:1px solid #17294a!important;
+  padding:0 12px!important;
+  box-shadow:none!important;
+  outline:none!important;
+}
+.login-card .field input::placeholder{
+  color:#b8c7de!important;
+}
+.login-card .field input:focus{
+  border-color:#2563eb!important;
+  box-shadow:0 0 0 4px rgba(37,99,235,.18)!important;
+}
+.login-btn{
+  width:100%!important;
+  height:46px!important;
+  border:0!important;
+  border-radius:10px!important;
+  background:linear-gradient(135deg,#2f6bff,#1d4ed8)!important;
+  color:#ffffff!important;
+  font-weight:900!important;
+  margin-top:14px!important;
+  box-shadow:0 10px 22px rgba(37,99,235,.24)!important;
+}
+.login-btn:active{transform:scale(.99)!important;}
+.login-help{
+  margin:12px 0 0!important;
+  color:#667794!important;
+  font-size:11px!important;
+  line-height:1.35!important;
+}
+.login-error{
+  margin-top:12px!important;
+  color:#991b1b!important;
+  background:#fee2e2!important;
+  border:1px solid #fecaca!important;
+  border-radius:10px!important;
+  padding:10px!important;
+  font-size:12px!important;
+}
+@media(max-width:430px){
+  .login-screen{padding:16px!important;align-items:center!important;}
+  .login-card{width:100%!important;padding:22px 20px 24px!important;border-radius:22px!important;}
+  .login-brand-img{width:150px!important;height:150px!important;margin-bottom:14px!important;}
+  .login-card h1{font-size:22px!important;}
+  .login-card .field input{height:46px!important;}
+}
