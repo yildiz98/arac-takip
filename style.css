@@ -929,3 +929,43 @@ body{background:linear-gradient(135deg,#061124 0%,#0b1830 50%,#071226 100%)!impo
     font-size:16px!important;
   }
 }
+
+
+/* ===== V9.8 CLEAN SETTINGS + MOBILE COLOR FIX ===== */
+.clean-settings .notice{
+  margin:10px 0 16px!important;
+}
+.settings-actions{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:12px!important;
+}
+.settings-actions .btn{
+  width:100%!important;
+  min-height:46px!important;
+  font-weight:850!important;
+}
+@media(max-width:820px){
+  .settings-actions{grid-template-columns:1fr!important;}
+  .clean-settings{padding-bottom:20px!important;}
+}
+
+/* Alt hızlı işlem kutusu artık açık renk değil; ana lacivert tema ile uyumlu. */
+@media(max-width:820px){
+  .mobile-bottom-actions{
+    background:linear-gradient(180deg,rgba(11,24,48,.97),rgba(7,18,38,.97))!important;
+    border:1px solid rgba(80,123,210,.55)!important;
+    box-shadow:0 14px 34px rgba(0,0,0,.48), 0 0 0 1px rgba(255,255,255,.03) inset!important;
+  }
+  .mobile-bottom-actions .action,
+  .mobile-bottom-actions #btnPayment{
+    background:linear-gradient(135deg,#245fd6,#1d4ed8)!important;
+    border:1px solid rgba(119,160,255,.38)!important;
+    color:#fff!important;
+    box-shadow:0 9px 22px rgba(29,78,216,.32)!important;
+  }
+  .mobile-bottom-actions .action:hover,
+  .mobile-bottom-actions .action:active{
+    background:linear-gradient(135deg,#2f6bff,#1d4ed8)!important;
+  }
+}

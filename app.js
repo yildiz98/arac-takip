@@ -715,23 +715,15 @@ function renderReports(){
 }
 function renderSettings(){
   document.getElementById("settings").innerHTML = `
-    <div class="panel">
-      <h3>Demo Ayarları</h3>
-      <p class="notice"><b>Bu paket demo sürümdür.</b> Giriş ekranı, Firebase bağlantısı ve ortak kayıt havuzu kaldırıldı. Veriler sadece bu demo sitenin localStorage alanında tutulur; mevcut canlı sistem verilerine dokunmaz.</p>
-      <div class="toolbar">
-        <button class="btn" onclick="exportData()">Demo Verileri Yedekle</button>
+    <div class="panel clean-settings">
+      <h3>Ayarlar</h3>
+      <p class="notice">Veri yedeği alabilir, daha önce alınan yedeği geri yükleyebilir veya sistemi sıfırlayabilirsin.</p>
+      <div class="toolbar settings-actions">
+        <button class="btn" onclick="exportData()">Veri Yedeği Al</button>
         <button class="btn" onclick="document.getElementById('importFile').click()">Yedekten Yükle</button>
         <input id="importFile" class="hidden" type="file" accept="application/json" onchange="importData(event)" />
-        <button class="btn ghost" onclick="clearDemo()">Örnek Kayıtları Temizle</button><button class="btn danger-btn" onclick="resetAllData()">Tüm Demo Verilerini Sıfırla</button>
+        <button class="btn danger-btn" onclick="resetAllData()">Tüm Verileri Sıfırla</button>
       </div>
-    </div>
-
-    <div class="panel">
-      <h3>Canlı Sisteme Uyarlama Notu</h3>
-      <p class="notice">Bu tasarımı önce ayrı GitHub reposunda dene. Beğendiğin bölümleri daha sonra mevcut Firebase/admin-personel sistemine parça parça aktarırız.</p>
-      <pre class="code-box">Demo veri anahtarı: hickorkmaz_garaj_v8_demo_data
-Canlı sistem veri anahtarı kullanılmaz.
-Admin girişi yoktur. Demo otomatik açılır.</pre>
     </div>`;
 }
 
