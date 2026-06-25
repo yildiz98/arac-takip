@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hickorkmaz-garaj-v9-8-clean-mobile';
+const CACHE_NAME = 'hickorkmaz-garaj-v9-9-report-debt-graphs';
 const ASSETS = [
   './',
   './index.html',

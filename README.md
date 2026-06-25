@@ -11,3 +11,9 @@ Kurulum:
 1. ZIP içindeki dosyaları GitHub reposuna yükle.
 2. GitHub Pages açık ise birkaç dakika bekle.
 3. Telefondan sayfayı yenile veya ana ekran uygulamasını kapatıp aç.
+
+
+V9.9 Rapor & Borç Grafik Güncellemesi:
+- Raporlar sayfasına sadece okunur aylık ciro, tahsilat, servis dağılımı ve ödeme durumu grafikleri eklendi.
+- Borç Takibi sayfasına sadece okunur borç yaşlandırma ve borç trend grafikleri eklendi.
+- Mevcut veri anahtarı ve Firebase ayarları korunmuştur.

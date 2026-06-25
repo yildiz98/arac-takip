@@ -705,13 +705,148 @@ function renderPayments(){
     <div class="grid three">${stat("Bugünkü Tahsilat", money(db.payments.filter(p=>p.date===today()).reduce((t,p)=>t+Number(p.amount||0),0)), "good")}${stat("Toplam Tahsilat", money(db.payments.reduce((t,p)=>t+Number(p.amount||0),0)), "good")}${stat("Tahsilat Kaydı", db.payments.length)}</div><br>
     ${paymentsTable(db.payments.slice().sort((a,b)=>safe(b.date).localeCompare(safe(a.date))))}</div>`;
 }
+
+function monthKey(d){ return safe(d).slice(0,7) || today().slice(0,7); }
+function monthLabel(key){
+  const names = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  const m = Number(safe(key).slice(5,7));
+  return names[m-1] || key;
+}
+function lastSixMonths(){
+  const out = [];
+  const d = new Date();
+  for(let i=5;i>=0;i--){
+    const x = new Date(d.getFullYear(), d.getMonth()-i, 1);
+    out.push(`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`);
+  }
+  return out;
+}
+function daysBetween(dateStr){
+  const d = new Date(dateStr || today());
+  if(isNaN(d.getTime())) return 0;
+  return Math.max(0, Math.floor((new Date() - d) / 86400000));
+}
+function unpaidServiceAmount(s){
+  if(serviceIsPaid(s.id)) return 0;
+  return Math.max(Number(s.amount||0) - servicePaidAmount(s.id), 0);
+}
+function simpleLineChart(points, valueKey, labelKey='label'){
+  const max = Math.max(...points.map(p=>Number(p[valueKey]||0)), 1);
+  const coords = points.map((p,i)=>{
+    const x = points.length === 1 ? 50 : 8 + (i * 84/(points.length-1));
+    const y = 88 - (Number(p[valueKey]||0) * 72 / max);
+    return `${x},${y}`;
+  }).join(' ');
+  return `<div class="read-chart line-chart"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><defs><linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="rgba(47,107,255,.28)"/><stop offset="100%" stop-color="rgba(47,107,255,0)"/></linearGradient></defs><polyline points="8,88 ${coords} 92,88" fill="url(#lineFill)" stroke="none"></polyline><polyline points="${coords}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></polyline></svg><div class="chart-x">${points.map(p=>`<span>${p[labelKey]}</span>`).join('')}</div></div>`;
+}
+function simpleBarChart(points, valueKey, labelKey='label'){
+  const max = Math.max(...points.map(p=>Number(p[valueKey]||0)), 1);
+  return `<div class="read-chart bar-chart">${points.map(p=>`<div class="bar-col"><span class="bar-value">${money(p[valueKey]||0)}</span><i style="height:${Math.max(8, Math.round(Number(p[valueKey]||0)*100/max))}%"></i><small>${p[labelKey]}</small></div>`).join('')}</div>`;
+}
+function serviceCategoryData(){
+  const map = {};
+  db.services.forEach(s => {
+    const items = Array.isArray(s.items) && s.items.length ? s.items : [s.title || 'Diğer'];
+    items.forEach(item => { map[item] = (map[item] || 0) + Number(s.amount||0); });
+  });
+  return Object.entries(map).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value).slice(0,5);
+}
+function horizontalRanking(data){
+  const max = Math.max(...data.map(x=>Number(x.value||0)), 1);
+  return `<div class="rank-bars">${data.map(x=>`<div class="rank-row"><span>${x.label}</span><div><i style="width:${Math.max(4, Math.round(Number(x.value||0)*100/max))}%"></i></div><b>${money(x.value)}</b></div>`).join('') || `<div class="notice">Gösterilecek veri yok.</div>`}</div>`;
+}
+function donutChart(parts){
+  const total = parts.reduce((t,p)=>t+Number(p.value||0),0) || 1;
+  let offset = 25;
+  const circles = parts.map((p,i)=>{
+    const val = Math.max(0, Number(p.value||0));
+    const dash = (val/total)*100;
+    const cls = ['donut-a','donut-b','donut-c','donut-d'][i%4];
+    const c = `<circle class="${cls}" cx="18" cy="18" r="15.915" fill="transparent" stroke-width="4" stroke-dasharray="${dash} ${100-dash}" stroke-dashoffset="${offset}"></circle>`;
+    offset -= dash;
+    return c;
+  }).join('');
+  return `<div class="donut-wrap"><svg viewBox="0 0 36 36" class="donut"><circle class="donut-bg" cx="18" cy="18" r="15.915" fill="transparent" stroke-width="4"></circle>${circles}</svg><div class="donut-legend">${parts.map(p=>`<span><i></i>${p.label}: <b>${money(p.value)}</b></span>`).join('')}</div></div>`;
+}
+function reportMonthlyData(){
+  return lastSixMonths().map(m => ({
+    label: monthLabel(m),
+    ciro: db.services.filter(s=>monthKey(s.date)===m).reduce((t,s)=>t+Number(s.amount||0),0),
+    tahsilat: db.payments.filter(p=>monthKey(p.date)===m).reduce((t,p)=>t+Number(p.amount||0),0)
+  }));
+}
+function debtAgingData(){
+  const buckets = [{label:'0-30 Gün',value:0},{label:'31-60 Gün',value:0},{label:'60+ Gün',value:0}];
+  db.services.forEach(s=>{
+    const val = unpaidServiceAmount(s);
+    if(val <= 0) return;
+    const d = daysBetween(s.date);
+    if(d <= 30) buckets[0].value += val;
+    else if(d <= 60) buckets[1].value += val;
+    else buckets[2].value += val;
+  });
+  return buckets;
+}
+function debtCustomerRows(){
+  return db.customers.map(c=>({
+    customer:c,
+    debt:customerDebt(c.id),
+    vehicles:getVehiclesByCustomer(c.id).length
+  })).filter(x=>x.debt>0).sort((a,b)=>b.debt-a.debt);
+}
+function reportSummaryCards(totalRevenue,totalPaid,totalDebt){
+  return `<div class="grid stats report-stats">
+    ${stat('Toplam Ciro', money(totalRevenue), 'good', 'fa-solid fa-chart-line')}
+    ${stat('Toplam Tahsilat', money(totalPaid), 'good', 'fa-solid fa-money-bill-wave')}
+    ${stat('Toplam Alacak', money(totalDebt), totalDebt>0?'bad':'good', 'fa-solid fa-file-invoice-dollar')}
+    ${stat('Toplam Servis', db.services.length, '', 'fa-solid fa-screwdriver-wrench')}
+  </div>`;
+}
 function renderDebts(){
-  document.getElementById("debts").innerHTML = `<div class="grid two"><div class="panel"><div class="panel-head"><h3>Müşteri/Firma Toplam Borcu</h3></div>${customerDebtTable(false)}</div><div class="panel"><div class="panel-head"><h3>Plaka Bazlı Borç</h3></div>${vehiclesTable(db.vehicles.filter(v=>vehicleDebt(v.id)>0))}</div></div>`;
+  const totalRevenue = db.services.reduce((t,s)=>t+Number(s.amount||0),0);
+  const totalPaid = db.payments.reduce((t,p)=>t+Number(p.amount||0),0);
+  const totalDebt = Math.max(totalRevenue-totalPaid,0);
+  const aging = debtAgingData();
+  const rows = debtCustomerRows();
+  const debtTrend = reportMonthlyData().map(x=>({label:x.label, debt:Math.max(x.ciro-x.tahsilat,0)}));
+  document.getElementById("debts").innerHTML = `
+    <div class="report-hero"><div><h2>Borç Takibi</h2><p>Müşteri borç durumlarını sadece okunur grafiklerle takip et.</p></div><span class="date-pill"><i class="fa-regular fa-calendar"></i> ${new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'})}</span></div>
+    <div class="grid stats report-stats debt-stats">
+      ${stat('Toplam Alacak', money(totalDebt), totalDebt>0?'bad':'good', 'fa-solid fa-wallet')}
+      ${stat('0-30 Gün', money(aging[0].value), 'warn', 'fa-solid fa-hourglass-start')}
+      ${stat('31-60 Gün', money(aging[1].value), 'warn', 'fa-solid fa-hourglass-half')}
+      ${stat('60+ Gün', money(aging[2].value), 'bad', 'fa-solid fa-triangle-exclamation')}
+    </div>
+    <div class="grid report-grid two">
+      <div class="panel read-only-panel"><div class="panel-head"><h3>Borç Yaşlandırma Grafiği</h3><span class="readonly-badge">Sadece okunur</span></div>${donutChart(aging)}</div>
+      <div class="panel read-only-panel"><div class="panel-head"><h3>Borç Trend Grafiği</h3><span class="readonly-badge">Sadece okunur</span></div>${simpleLineChart(debtTrend,'debt')}</div>
+    </div>
+    <div class="panel"><div class="panel-head"><h3>Borçlu Müşteriler</h3><span class="readonly-badge">${rows.length} kayıt</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Müşteri</th><th>Araç</th><th>Toplam Borç</th><th>Durum</th><th>İşlem</th></tr></thead><tbody>
+        ${rows.map(x=>`<tr><td><b>${x.customer.name}</b></td><td>${x.vehicles}</td><td class="amount bad">${money(x.debt)}</td><td><span class="badge price-pending">Takipte</span></td><td><button class="small-btn" onclick="openCustomer('${x.customer.id}')">Detay</button></td></tr>`).join('') || emptyRow(5)}
+      </tbody></table></div>
+    </div>`;
 }
 function renderReports(){
-  const debtors = db.customers.filter(c=>customerDebt(c.id)>0).length;
-  const avgDebt = db.vehicles.length ? db.vehicles.reduce((t,v)=>t+vehicleDebt(v.id),0)/db.vehicles.length : 0;
-  document.getElementById("reports").innerHTML = `<div class="grid stats">${stat("Borçlu Müşteri/Firma", debtors)}${stat("Servis Kaydı", db.services.length)}${stat("Tahsilat Kaydı", db.payments.length)}${stat("Ortalama Plaka Borcu", money(avgDebt))}${stat("Bugünkü Servis", db.services.filter(s=>s.date===today()).length)}</div><div class="panel"><h3>Genel Plaka Raporu</h3>${vehiclesTable(db.vehicles)}</div>`;
+  const totalRevenue = db.services.reduce((t,s)=>t+Number(s.amount||0),0);
+  const totalPaid = db.payments.reduce((t,p)=>t+Number(p.amount||0),0);
+  const totalDebt = Math.max(totalRevenue-totalPaid,0);
+  const monthly = reportMonthlyData();
+  const cats = serviceCategoryData();
+  const paymentParts = [{label:'Tahsil Edilen',value:totalPaid},{label:'Kalan Alacak',value:totalDebt}];
+  document.getElementById("reports").innerHTML = `
+    <div class="report-hero"><div><h2>Raporlar</h2><p>Gelir, gider ve servis performansını okunur grafiklerle analiz et.</p></div><span class="date-pill"><i class="fa-regular fa-calendar"></i> Son 6 Ay</span></div>
+    ${reportSummaryCards(totalRevenue,totalPaid,totalDebt)}
+    <div class="grid report-grid two">
+      <div class="panel read-only-panel"><div class="panel-head"><h3>Aylık Ciro Grafiği</h3><span class="readonly-badge">Sadece okunur</span></div>${simpleLineChart(monthly,'ciro')}</div>
+      <div class="panel read-only-panel"><div class="panel-head"><h3>Aylık Tahsilat Grafiği</h3><span class="readonly-badge">Sadece okunur</span></div>${simpleBarChart(monthly,'tahsilat')}</div>
+    </div>
+    <div class="grid report-grid two">
+      <div class="panel read-only-panel"><div class="panel-head"><h3>Servis Dağılımı</h3><span class="readonly-badge">Kategori</span></div>${donutChart(cats.length ? cats : [{label:'Veri Yok',value:1}])}</div>
+      <div class="panel read-only-panel"><div class="panel-head"><h3>Ödeme Durumu</h3><span class="readonly-badge">Cari</span></div>${donutChart(paymentParts)}</div>
+    </div>
+    <div class="panel read-only-panel"><div class="panel-head"><h3>En Çok Ciro Getiren Hizmetler</h3><span class="readonly-badge">Top 5</span></div>${horizontalRanking(cats)}</div>
+    <div class="panel"><div class="panel-head"><h3>Genel Plaka Raporu</h3><span class="readonly-badge">Liste</span></div>${vehiclesTable(db.vehicles)}</div>`;
 }
 function renderSettings(){
   document.getElementById("settings").innerHTML = `
