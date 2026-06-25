@@ -131,3 +131,9 @@ Mantık:
 - Plaka kayıtlı değilse Müşteri/Firma adı varsa cari ödeme olarak işler.
 - Müşteri/Firma adı tam, boşluksuz ve kısmi eşleşmeyle bulunur.
 - Mevcut müşteri/firma bulunamazsa yeni kart oluşturmadan önce onay ister.
+
+
+V9.7 Mobile Bottom Güncelleme:
+- Telefonda hızlı işlemler ekranın altına 2x2 büyük buton olarak alındı.
+- Dashboard üst hızlı işlem butonları mobilde gizlendi.
+- Alt butonlar için mobil boşluk ve dokunma alanları düzenlendi.
