@@ -7,9 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Garaj V7" />
-  <title>Hiçkorkmaz Garaj V7</title>
+  <title>Hiçkorkmaz Garaj V9.7 Mobile Bottom</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=v9-7-mobile-bottom" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
@@ -44,43 +44,20 @@
         <img src="logo.png" alt="Hiçkorkmaz Garage" class="brand-img">
         <div>
           <h1>Hiçkorkmaz Garaj</h1>
-          <p>V7 Profesyonel Takip</p>
+          <p>V9.7 Mobile</p>
         </div>
       </div>
 
-   <nav class="menu">
-  <button class="menu-item active" data-page="dashboard">
-    <i class="fa-solid fa-house"></i> Dashboard
-  </button>
-
-  <button class="menu-item" data-page="customers">
-    <i class="fa-solid fa-users"></i> Müşteriler / Firmalar
-  </button>
-
-  <button class="menu-item" data-page="vehicles">
-    <i class="fa-solid fa-car"></i> Araçlar
-  </button>
-
-  <button class="menu-item" data-page="services">
-    <i class="fa-solid fa-screwdriver-wrench"></i> Servis Kayıtları
-  </button>
-
-  <button class="menu-item" data-page="payments">
-    <i class="fa-solid fa-money-bill-wave"></i> Tahsilatlar
-  </button>
-
-  <button class="menu-item" data-page="debts">
-    <i class="fa-solid fa-file-invoice-dollar"></i> Borç Takibi
-  </button>
-
-  <button class="menu-item" data-page="reports">
-    <i class="fa-solid fa-chart-column"></i> Raporlar
-  </button>
-
-  <button class="menu-item" data-page="settings">
-    <i class="fa-solid fa-gear"></i> Ayarlar
-  </button>
-</nav>
+      <nav class="menu">
+        <button class="menu-item active" data-page="dashboard"><i class="fa-solid fa-house"></i> Dashboard</button>
+        <button class="menu-item" data-page="customers"><i class="fa-solid fa-users"></i> Müşteriler / Firmalar</button>
+        <button class="menu-item" data-page="vehicles"><i class="fa-solid fa-car"></i> Araçlar</button>
+        <button class="menu-item" data-page="services"><i class="fa-solid fa-screwdriver-wrench"></i> Servis Kayıtları</button>
+        <button class="menu-item" data-page="payments"><i class="fa-solid fa-money-bill-wave"></i> Tahsilatlar</button>
+        <button class="menu-item" data-page="debts"><i class="fa-solid fa-file-invoice-dollar"></i> Borç Takibi</button>
+        <button class="menu-item" data-page="reports"><i class="fa-solid fa-chart-column"></i> Raporlar</button>
+        <button class="menu-item" data-page="settings"><i class="fa-solid fa-gear"></i> Ayarlar</button>
+      </nav>
     </aside>
 
     <button id="mobileMenuBtn" class="mobile-menu-btn">☰ Menü</button>
@@ -115,15 +92,13 @@
       <section id="detail" class="page"></section>
     </main>
   </div>
-
-  <div class="quick-actions">
-    <button class="action primary" id="btnCustomer">+ Müşteri/Firma</button>
-    <button class="action" id="btnVehicle">+ Araç</button>
-    <button class="action" id="btnService">+ Servis</button>
-    <button class="action" id="btnPayment">+ Tahsilat</button>
+  <div class="quick-actions mobile-bottom-actions" aria-label="Hızlı İşlemler">
+    <button class="action primary" id="btnCustomer" type="button">+ Müşteri/Firma</button>
+    <button class="action" id="btnVehicle" type="button">+ Araç</button>
+    <button class="action" id="btnService" type="button">+ Servis</button>
+    <button class="action" id="btnPayment" type="button">+ Tahsilat</button>
   </div>
-
-  <dialog id="modal">
+<dialog id="modal">
     <form id="modalForm" method="dialog">
       <div class="modal-head">
         <h3 id="modalTitle">Kayıt Ekle</h3>
@@ -138,6 +113,6 @@
   </dialog>
 
   
-  <script type="module" src="app.js?v=1781020002"></script>
+  <script type="module" src="app.js?v=v9-7-mobile-bottom"></script>
 </body>
 </html>

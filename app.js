@@ -5,23 +5,16 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import {
-  getFirestore,
-  doc,
-  onSnapshot,
-  setDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { firebaseConfig, ADMIN_EMAILS, PERSONEL_EMAILS } from "./firebase-config.js";
 
+// CANLI SİSTEM: Firebase Auth korunur.
+// ÖNEMLİ: Mevcut aktif sistem verileri silinmesin diye STORE_KEY aynı bırakıldı.
 const STORE_KEY = "hickorkmaz_garaj_v7_data";
 const AUTH_KEY = "hickorkmaz_garaj_v7_google_auth";
 const DELETE_PASSWORD = "212198";
 
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
-const firestoreDb = getFirestore(firebaseApp);
-const SHARED_DATA_DOC = doc(firestoreDb, "garages", "hickorkmaz-garaj-v7");
 let activeUser = null;
 let unsubscribeSharedData = null;
 let isApplyingCloudData = false;
@@ -178,7 +171,6 @@ function startSharedDataSync(){
 function persist(){
   db = normalizeDb(db);
   localStorage.setItem(STORE_KEY, JSON.stringify(db));
-  if(activeUser) saveCloudData();
   if(activeUser) render();
 }
 function newId(prefix){ return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7); }
@@ -256,6 +248,17 @@ function getPaymentsByVehicle(vehicleId){ return db.payments.filter(x=>x.vehicle
 function vehicleTotal(vehicleId){ return getServicesByVehicle(vehicleId).reduce((t,x)=>t+Number(x.amount||0),0); }
 function vehiclePaid(vehicleId){ return getPaymentsByVehicle(vehicleId).reduce((t,x)=>t+Number(x.amount||0),0); }
 function vehicleDebt(vehicleId){ return vehicleTotal(vehicleId)-vehiclePaid(vehicleId); }
+function servicePaidAmount(serviceId){ return db.payments.filter(p=>p.serviceId===serviceId).reduce((t,x)=>t+Number(x.amount||0),0); }
+function serviceIsPaid(serviceId){
+  const s = db.services.find(x=>x.id===serviceId);
+  if(!s) return false;
+  return s.paymentStatus === "paid" || (Number(s.amount||0) > 0 && servicePaidAmount(serviceId) >= Number(s.amount||0));
+}
+function serviceRemainingAmount(serviceId){
+  const s = db.services.find(x=>x.id===serviceId);
+  if(!s) return 0;
+  return Math.max(Number(s.amount||0) - servicePaidAmount(serviceId), 0);
+}
 function customerTotal(customerId){ return getVehiclesByCustomer(customerId).reduce((t,v)=>t+vehicleTotal(v.id),0); }
 function customerPaid(customerId){
   const vehiclePayments =
@@ -286,6 +289,7 @@ function remainingKm(vehicleId){
 }
 
 function paymentTypeText(p){
+  if(p.paymentType === "service_paid") return "Servis Ödendi";
   if(p.paymentType === "vehicle_only") return "Sadece Araç";
   if(p.paymentType === "customer_only") return "Sadece Cari Hesap";
   if(p.paymentType === "vehicle_customer") return "Araç + Cari Hesap";
@@ -417,7 +421,8 @@ function setupAuth(){
     }
   }
 
-  if(form){
+  if(form && form.dataset.authReady !== "1"){
+    form.dataset.authReady = "1";
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("loginEmail").value.trim();
@@ -432,36 +437,39 @@ function setupAuth(){
     });
   }
 
-  onAuthStateChanged(auth, (user) => {
-    if(!user){
-      activeUser = null;
-      if(unsubscribeSharedData){ unsubscribeSharedData(); unsubscribeSharedData = null; }
+  if(!window.__hickorkmazAuthListenerReady){
+    window.__hickorkmazAuthListenerReady = true;
+    onAuthStateChanged(auth, (user) => {
+      if(!user){
+        activeUser = null;
+        applyAuthState();
+        return;
+      }
+
+      const access = getRoleForEmail(user.email);
+      if(!access){
+        activeUser = null;
+        signOut(auth);
+        showLoginError(`${user.email} için yetki tanımlı değil. firebase-config.js içinde ADMIN_EMAILS veya PERSONEL_EMAILS listesine ekle.`);
+        applyAuthState();
+        return;
+      }
+
+      activeUser = {
+        uid:user.uid,
+        email:user.email,
+        name:user.email,
+        role:access.role,
+        label:access.label
+      };
+
       applyAuthState();
-      return;
-    }
+      render();
+    });
+  }
 
-    const access = getRoleForEmail(user.email);
-    if(!access){
-      activeUser = null;
-      signOut(auth);
-      showLoginError(`${user.email} için yetki tanımlı değil. firebase-config.js içinde ADMIN_EMAILS veya PERSONEL_EMAILS listesine ekle.`);
-      applyAuthState();
-      return;
-    }
-
-    activeUser = {
-      uid:user.uid,
-      email:user.email,
-      name:user.email,
-      role:access.role,
-      label:access.label
-    };
-
-    applyAuthState();
-    startSharedDataSync();
-  });
-
-  if(logoutBtn){
+  if(logoutBtn && logoutBtn.dataset.logoutReady !== "1"){
+    logoutBtn.dataset.logoutReady = "1";
     logoutBtn.addEventListener("click", async () => {
       await signOut(auth);
       activeUser = null;
@@ -510,12 +518,103 @@ function openPage(page){
   render();
 }
 
-function stat(label,value,cls=""){
-  return `<div class="card"><div class="label">${label}</div><div class="value ${cls}">${value}</div></div>`;
+window.openPage = openPage;
+
+window.openPage = openPage;
+
+function stat(label,value,cls="",icon="fa-solid fa-chart-simple",trend="", page=""){
+  const clickAttr = page ? ` onclick="openPage('${page}')" role="button" title="${label} bölümüne git"` : "";
+  const clickableClass = page ? " clickable-stat" : "";
+  return `<div class="card stat-card${clickableClass}"${clickAttr}>
+    <div class="stat-icon"><i class="${icon}"></i></div>
+    <div class="stat-meta"><div class="label">${label}</div><div class="value ${cls}">${value}</div>${trend ? `<div class="trend ${cls}">${trend}</div>` : ``}</div>
+  </div>`;
+}
+
+function dashboardCustomerDebtList(){
+  const list = db.customers.map(c => ({...c, debt:customerDebt(c.id), count:getVehiclesByCustomer(c.id).length}))
+    .filter(c=>c.debt>0).sort((a,b)=>b.debt-a.debt).slice(0,5);
+  return `<div class="debt-list">${list.map(c=>`<button class="debt-row" onclick="openCustomer('${c.id}')"><span class="avatar-mini">${safe(c.name).slice(0,2).toUpperCase() || 'HG'}</span><span><b>${c.name}</b><small>${c.count} araç / servis</small></span><strong>${money(c.debt)}</strong></button>`).join("") || `<div class="notice">Borçlu müşteri bulunmuyor.</div>`}</div>`;
+}
+
+function dashboardChart(totalRevenue){
+  const paid = db.payments.reduce((t,p)=>t+Number(p.amount||0),0);
+  const debt = Math.max(totalRevenue-paid,0);
+  const max = Math.max(totalRevenue, paid, debt, 1);
+  const h1 = Math.max(12, Math.round((totalRevenue/max)*120));
+  const h2 = Math.max(12, Math.round((paid/max)*120));
+  const h3 = Math.max(12, Math.round((debt/max)*120));
+  return `<div class="chart-card">
+    <div class="bar" style="height:${h1}px"><span>${money(totalRevenue)}</span></div>
+    <div class="bar" style="height:${h2}px"><span>${money(paid)}</span></div>
+    <div class="bar danger" style="height:${h3}px"><span>${money(debt)}</span></div>
+  </div><div class="chart-labels"><span>Ciro</span><span>Tahsilat</span><span>Alacak</span></div>`;
 }
 
 function render(){
   renderDashboard(); renderCustomers(); renderVehicles(); renderServices(); renderPayments(); renderDebts(); renderReports(); renderSettings();
+}
+
+function dashboardQuickActions(){
+  return `<div class="dashboard-top-actions">
+    <button class="dash-action" onclick="openModal('customer')"><i class="fa-solid fa-plus"></i> Müşteri</button>
+    <button class="dash-action" onclick="openModal('vehicle')"><i class="fa-solid fa-plus"></i> Araç</button>
+    <button class="dash-action" onclick="openModal('service')"><i class="fa-solid fa-plus"></i> Servis</button>
+    <button class="dash-action payment" onclick="openModal('payment')"><i class="fa-solid fa-plus"></i> Tahsilat</button>
+  </div>`;
+}
+
+function dashboardRecentPaymentsList(){
+  const list = db.payments.slice().sort((a,b)=>safe(b.date).localeCompare(safe(a.date))).slice(0,5);
+  return `<div class="payment-list">${list.map(p=>{
+    const c = getCustomer(p.customerId);
+    return `<button class="payment-row" onclick="openPage('payments')"><span class="avatar-mini">${safe(c?.name || 'HG').slice(0,2).toUpperCase()}</span><span><b>${c?.name || '-'}</b><small>${p.date || '-'} ${p.createdAt ? new Date(p.createdAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}) : ''}</small></span><strong>${money(p.amount)}</strong></button>`;
+  }).join('') || `<div class="notice">Tahsilat kaydı bulunmuyor.</div>`}</div>`;
+}
+
+function dashboardRecentPaymentsTable(){
+  const list = db.payments.slice().sort((a,b)=>safe(b.date).localeCompare(safe(a.date))).slice(0,5);
+  return `<div class="table-wrap compact-table"><table><thead><tr><th>Tarih</th><th>Müşteri / Firma</th><th>Açıklama</th><th>Tutar</th></tr></thead><tbody>
+    ${list.map(p=>{
+      const c = getCustomer(p.customerId);
+      const v = getVehicle(p.vehicleId);
+      const plate = v ? (v.noPlateName ? v.noPlateName + ' / ' + v.plate : v.plate) : (p.manualPlate || 'Cari');
+      return `<tr><td>${p.date || '-'}</td><td>${c?.name || '-'}</td><td>${plate} tahsilatı</td><td class="amount good">${money(p.amount)}</td></tr>`;
+    }).join('') || emptyRow(4)}
+  </tbody></table></div>`;
+}
+
+function dashboardRecentVehiclesTable(){
+  const list = db.vehicles.slice(-5).reverse();
+  return `<div class="table-wrap compact-table"><table><thead><tr><th>Plaka</th><th>Müşteri</th><th>Araç</th></tr></thead><tbody>
+    ${list.map(v=>{
+      const c = getCustomer(v.customerId);
+      return `<tr><td><button class="small-btn" onclick="openVehicle('${v.id}')">${v.noPlateName ? v.noPlateName + ' / ' + v.plate : v.plate}</button></td><td>${c?.name || '-'}</td><td>${[v.brand,v.model,v.year].filter(Boolean).join(' ') || '-'}</td></tr>`;
+    }).join('') || emptyRow(3)}
+  </tbody></table></div>`;
+}
+
+function dashboardRecentUnpaidServicesTable(list){
+  return `<div class="table-wrap dashboard-service-table"><table><thead><tr><th>Tarih</th><th>Plaka</th><th>Müşteri / Firma</th><th>Yapılan İşlemler</th><th>Durum</th><th>Toplam</th><th>İşlem</th></tr></thead><tbody>
+  ${list.map(s=>{
+    const v = getVehicle(s.vehicleId);
+    const c = getCustomer(v?.customerId);
+    return `<tr>
+      <td>${s.date || "-"}</td>
+      <td>${v ? `<button class="small-btn plate-btn" onclick="openVehicle('${v.id}')">${v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate}</button>` : "-"}</td>
+      <td>${c?.name || "-"}</td>
+      <td>${serviceItemsText(s)}${s.title ? " / " + s.title : ""}</td>
+      <td>${servicePricingBadge(s)}</td>
+      <td class="amount ${servicePricingPending(s)?"warn":"good"}">${serviceMoneyText(s,"amount")}</td>
+      <td><div class="service-action-row">
+        <button class="small-btn" onclick="openVehicle('${v?.id || ""}')">Görüntüle</button>
+        <button class="small-btn" onclick="printSingleService('${s.id}')">Yazdır</button>
+        <button class="small-btn" onclick="shareSingleServiceWhatsApp('${s.id}')">WP</button>
+        ${(!servicePricingPending(s) && Number(s.amount||0)>0) ? `<button class="small-btn paid-btn" onclick="markServicePaid('${s.id}')">Ödendi</button>` : ``}
+      </div></td>
+    </tr>`;
+  }).join("") || emptyRow(7)}
+  </tbody></table></div><p class="dashboard-note">ⓘ Dashboard’da sadece ödenmemiş servisler gösterilir. Ödendi yaptığın kayıt buradan otomatik kaybolur.</p>`;
 }
 
 function renderDashboard(){
@@ -523,27 +622,46 @@ function renderDashboard(){
   const totalPaid = db.payments.reduce((t,p)=>t+Number(p.amount||0),0);
   const totalDebt = totalRevenue - totalPaid;
   const todayPaid = db.payments.filter(p=>p.date===today()).reduce((t,p)=>t+Number(p.amount||0),0);
-  const recentServices = db.services.slice().sort((a,b)=>safe(b.date).localeCompare(safe(a.date))).slice(0,8);
-  const upcoming = db.vehicles
-    .filter(v => vehicleNextKm(v.id))
-    .map(v => ({ vehicle:v, currentKm:vehicleLastKm(v.id), nextKm:vehicleNextKm(v.id), remaining:remainingKm(v.id) }))
-    .sort((a,b)=>(a.remaining ?? 999999999)-(b.remaining ?? 999999999))
+  const month = today().slice(0,7);
+  const monthRevenue = db.services.filter(s=>safe(s.date).slice(0,7)===month).reduce((t,s)=>t+Number(s.amount||0),0);
+  const unpaidServices = db.services
+    .filter(s => !serviceIsPaid(s.id))
+    .sort((a,b)=>safe(b.date).localeCompare(safe(a.date)))
     .slice(0,8);
+  const debtors = db.customers.filter(c=>customerDebt(c.id)>0).length;
+  const pricingWaiting = db.services.filter(s=>servicePricingPending(s) && !serviceIsPaid(s.id)).length;
 
  document.getElementById("dashboard").innerHTML = `
-    <div class="grid stats">
-      ${stat('<i class="fa-solid fa-car"></i> Toplam Araç', db.vehicles.length)}
-      ${stat('<i class="fa-solid fa-user-group"></i> Toplam Müşteri/Firma', db.customers.length)}
-      ${stat('<i class="fa-solid fa-wallet"></i> Toplam Alacak', money(totalDebt), totalDebt>0?"bad":"good")}
-      ${stat('<i class="fa-solid fa-chart-line"></i> Toplam Ciro', money(totalRevenue), "good")}
-      ${stat('<i class="fa-solid fa-money-bill-wave"></i> Bugünkü Tahsilat', money(todayPaid), "good")}
+    <div class="dash-hero v9-hero">
+      <div><h2>Dashboard</h2><p>Günlük servis, tahsilat ve cari takip özeti.</p></div>
+      <div class="date-pill"><i class="fa-regular fa-calendar"></i> ${new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric',weekday:'long'})}</div>
     </div>
-    <div class="grid two">
-      <div class="panel"><div class="panel-head"><h3>Son Servis Kayıtları</h3><button class="small-btn" onclick="openPage('services')">Tümü</button></div>${servicesTable(recentServices)}</div>
-      <div>
-        <div class="panel"><div class="panel-head"><h3>Alacaklı Müşteriler</h3><button class="small-btn" onclick="openPage('debts')">Borç Takibi</button></div>${customerDebtTable(true)}</div>
-        <div class="panel"><div class="panel-head"><h3>Yaklaşan Bakım / KM Kontrol</h3></div>${upcomingTable(upcoming)}</div>
-      </div>
+
+    ${dashboardQuickActions()}
+
+    <div class="grid stats pro-stats clean-stats">
+      ${stat('Toplam Müşteri', db.customers.length, '', 'fa-solid fa-users', '▲ kayıt havuzu', 'customers')}
+      ${stat('Toplam Araç', db.vehicles.length, '', 'fa-solid fa-car', '▲ araç kartı', 'vehicles')}
+      ${isAdmin() ? stat('Toplam Alacak', money(totalDebt), totalDebt>0?'bad':'good', 'fa-solid fa-file-invoice-dollar', `${debtors} borçlu`, 'debts') : stat('Açık Servis', unpaidServices.length, '', 'fa-solid fa-screwdriver-wrench', 'fiyat gizli', 'services')}
+      ${isAdmin() ? stat('Bu Ay Ciro', money(monthRevenue), 'good', 'fa-solid fa-chart-line', 'aylık', 'reports') : stat('Servis Kaydı', db.services.length, '', 'fa-solid fa-clipboard-list', 'operasyon', 'services')}
+      ${isAdmin() ? stat('Bugünkü Tahsilat', money(todayPaid), 'good', 'fa-solid fa-money-bill-wave', 'bugün', 'payments') : stat('Araç İşlemleri', db.vehicles.length, '', 'fa-solid fa-gauge-high', 'aktif', 'vehicles')}
+      ${stat('Ödenmemiş Servis', unpaidServices.length, unpaidServices.length?'warn':'good', 'fa-solid fa-wrench', unpaidServices.length?'ödeme bekliyor':'temiz', 'services')}
+    </div>
+
+    <div class="grid three comfort-alert-grid">
+      <div class="mini-alert danger wide-alert"><i class="fa-solid fa-user-clock"></i><b>Borçlu Müşteriler</b><span><strong>${debtors}</strong> müşteri borçlu durumda.</span><em>Toplam Borç: ${money(totalDebt)}</em><button onclick="openPage('debts')">Listeyi Gör →</button></div>
+      <div class="mini-alert wide-alert"><i class="fa-solid fa-screwdriver-wrench"></i><b>Açık Servisler</b><span><strong>${unpaidServices.length}</strong> ödenmemiş servis</span><em>Fiyatlandırma Bekleyen: ${pricingWaiting}</em><button onclick="openPage('services')">Servisleri Gör →</button></div>
+      <div class="mini-alert ok wide-alert"><i class="fa-brands fa-whatsapp"></i><b>WhatsApp</b><span>Servis ve cari bilgilendirme hazır.</span><em>Tek tuşla müşteri bilgilendir.</em><button onclick="openPage('services')">Servise Git →</button></div>
+    </div>
+
+    <div class="grid dashboard-main-final">
+      <div class="panel unpaid-service-panel"><div class="panel-head"><h3>Son Servis Kayıtları <span class="muted-title">(Ödenmemiş Servisler)</span></h3><button class="small-btn" onclick="openPage('services')">Tümünü Gör →</button></div>${dashboardRecentUnpaidServicesTable(unpaidServices)}</div>
+      ${isAdmin() ? `<div class="panel"><div class="panel-head"><h3>En Son Tahsilatlar</h3><button class="small-btn" onclick="openPage('payments')">Tümünü Gör →</button></div>${dashboardRecentPaymentsList()}</div>` : ``}
+    </div>
+
+    <div class="grid bottom-comfort">
+      <div class="panel"><div class="panel-head"><h3>Son Tahsilatlar</h3><button class="small-btn" onclick="openPage('payments')">Tümünü Gör →</button></div>${dashboardRecentPaymentsTable()}</div>
+      <div class="panel"><div class="panel-head"><h3>Son Eklenen Araçlar</h3><button class="small-btn" onclick="openPage('vehicles')">Tümünü Gör →</button></div>${dashboardRecentVehiclesTable()}</div>
     </div>`;
 }
 function renderCustomers(){
@@ -598,24 +716,22 @@ function renderReports(){
 function renderSettings(){
   document.getElementById("settings").innerHTML = `
     <div class="panel">
-      <h3>Ayarlar</h3>
-      <p class="notice">Firebase e-posta/şifre girişi ve ortak Firestore kayıt havuzu aktiftir. Admin ve personel aynı müşteri, araç, servis ve tahsilat verilerini görür.</p>
+      <h3>Demo Ayarları</h3>
+      <p class="notice"><b>Bu paket demo sürümdür.</b> Giriş ekranı, Firebase bağlantısı ve ortak kayıt havuzu kaldırıldı. Veriler sadece bu demo sitenin localStorage alanında tutulur; mevcut canlı sistem verilerine dokunmaz.</p>
       <div class="toolbar">
-        <button class="btn" onclick="exportData()">Verileri Yedekle</button>
+        <button class="btn" onclick="exportData()">Demo Verileri Yedekle</button>
         <button class="btn" onclick="document.getElementById('importFile').click()">Yedekten Yükle</button>
         <input id="importFile" class="hidden" type="file" accept="application/json" onchange="importData(event)" />
-        <button class="btn ghost" onclick="clearDemo()">Örnek Kayıtları Temizle</button><button class="btn danger-btn" onclick="resetAllData()">Tüm Verileri Sıfırla</button>
+        <button class="btn ghost" onclick="clearDemo()">Örnek Kayıtları Temizle</button><button class="btn danger-btn" onclick="resetAllData()">Tüm Demo Verilerini Sıfırla</button>
       </div>
     </div>
 
     <div class="panel">
-      <h3>Yetki Listesi</h3>
-      <p class="notice">
-        Admin tüm yetkilere sahiptir. Personel müşteri/firma, araç ve servis kaydı yapabilir; kayıtlar tüm kullanıcılarda ortak görünür.
-        Yetki vermek için ZIP içindeki <b>firebase-config.js</b> dosyasında ADMIN_EMAILS ve PERSONEL_EMAILS listelerini düzenle.
-      </p>
-      <pre class="code-box">ADMIN_EMAILS = ["admin@aractakip.com"]
-PERSONEL_EMAILS = ["personel1@aractakip.com"]</pre>
+      <h3>Canlı Sisteme Uyarlama Notu</h3>
+      <p class="notice">Bu tasarımı önce ayrı GitHub reposunda dene. Beğendiğin bölümleri daha sonra mevcut Firebase/admin-personel sistemine parça parça aktarırız.</p>
+      <pre class="code-box">Demo veri anahtarı: hickorkmaz_garaj_v8_demo_data
+Canlı sistem veri anahtarı kullanılmaz.
+Admin girişi yoktur. Demo otomatik açılır.</pre>
     </div>`;
 }
 
@@ -661,11 +777,12 @@ function servicesTable(list){
       <td>${s.note || "-"}</td>
       <td>${s.createdBy || "-"}</td>
       <td>
-        ${isAdmin() ? `
-        <button class="small-btn primary" onclick="openPricingModal('${s.id}')">${servicePricingPending(s) ? "Fiyatlandır" : "Fiyatı Düzenle"}</button>
+        ${isAdmin() ? `<div class="service-action-stack">
+        <button class="small-btn primary" onclick="openPricingModal('${s.id}')">${servicePricingPending(s) ? "Fiyatlandır" : "Fiyat Düzenle"}</button>
+        ${(!servicePricingPending(s) && Number(s.amount||0)>0) ? (serviceIsPaid(s.id) ? `<span class="paid-badge">Ödendi</span>` : `<button class="small-btn paid-btn" onclick="markServicePaid('${s.id}')">Ödendi</button>`) : ``}
         <button class="small-btn" onclick="printSingleService('${s.id}')">Yazdır</button>
-        <button class="small-btn" onclick="downloadSingleServicePdf('${s.id}')">PDF</button>
-        <button class="small-btn" onclick="shareSingleServiceWhatsApp('${s.id}')">WP</button>` : `<span class="badge">Personel</span>`}
+        <button class="small-btn" onclick="shareSingleServiceWhatsApp('${s.id}')">WP</button>
+        </div>` : `<span class="badge">Personel</span>`}
       </td>
     </tr>`;
   }).join("") || emptyRow(isAdmin()?13:10)}
@@ -1158,10 +1275,14 @@ document.addEventListener("click", (e)=>{
   if(!e.target.closest(".search-area")) searchResults.classList.add("hidden");
 });
 
-document.getElementById("btnCustomer").onclick = () => openModal("customer");
-document.getElementById("btnVehicle").onclick = () => openModal("vehicle");
-document.getElementById("btnService").onclick = () => openModal("service");
-document.getElementById("btnPayment").onclick = () => openModal("payment");
+const btnCustomer = document.getElementById("btnCustomer");
+const btnVehicle = document.getElementById("btnVehicle");
+const btnService = document.getElementById("btnService");
+const btnPayment = document.getElementById("btnPayment");
+if(btnCustomer) btnCustomer.onclick = () => openModal("customer");
+if(btnVehicle) btnVehicle.onclick = () => openModal("vehicle");
+if(btnService) btnService.onclick = () => openModal("service");
+if(btnPayment) btnPayment.onclick = () => openModal("payment");
 document.getElementById("closeModal").onclick = () => modal.close();
 document.getElementById("cancelModal").onclick = () => modal.close();
 
@@ -1204,6 +1325,43 @@ window.openModal = function(type){
     document.getElementById("modalBody").innerHTML = `${field("Müşteri / Firma Adı","customerName","text","",false)}${field("Plaka","plate","text","",false)}${field("Ödeme Tarihi","date","date",today())}${field("Tutar","amount","number")}${textareaField("Not","note")}<p class="notice">Plaka kayıtlıysa ödeme araç borcundan düşer. Plaka boşsa ödeme Müşteri/Firma cari hesabından düşer.</p>`;
   }
   modal.showModal();
+};
+
+window.markServicePaid = function(serviceId){
+  if(!requireAdmin()) return;
+  const s = db.services.find(x => x.id === serviceId);
+  if(!s){ alert("Servis kaydı bulunamadı."); return; }
+  if(servicePricingPending(s) || Number(s.amount||0) <= 0){
+    alert("Ödendi yapmadan önce servis fiyatını girmen gerekir.");
+    return;
+  }
+  if(serviceIsPaid(serviceId)){
+    alert("Bu servis zaten ödendi görünüyor.");
+    return;
+  }
+  const v = getVehicle(s.vehicleId);
+  const c = getCustomer(v?.customerId);
+  const remaining = serviceRemainingAmount(serviceId) || Number(s.amount || 0);
+  const ok = confirm(`${c?.name || "Müşteri"} için ${v ? (v.noPlateName ? v.noPlateName + " / " + v.plate : v.plate) : "araç"} servis kaydı ${money(remaining)} olarak ödendi işaretlensin mi?`);
+  if(!ok) return;
+  db.payments.push({
+    id:newId("p"),
+    customerId:c?.id || "",
+    vehicleId:v?.id || "",
+    serviceId:s.id,
+    manualPlate:v ? "" : "",
+    paymentType:"service_paid",
+    date:today(),
+    amount:remaining,
+    note:`Servis ödendi: ${serviceItemsText(s)}`,
+    createdBy:activeUser?.email || "-",
+    createdAt:new Date().toISOString()
+  });
+  s.paymentStatus = "paid";
+  s.paidAt = new Date().toISOString();
+  s.paidBy = activeUser?.email || "-";
+  persist();
+  alert("Tahsilat kaydı oluşturuldu ve bakiye otomatik düşüldü.");
 };
 
 window.openPricingModal = function(serviceId){
@@ -1396,7 +1554,7 @@ window.exportData = function(){
   const blob = new Blob([JSON.stringify(db,null,2)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = "hickorkmaz-garaj-v7-yedek.json"; a.click();
+  a.href = url; a.download = "hickorkmaz-garaj-v9-final-yedek.json"; a.click();
   URL.revokeObjectURL(url);
 };
 window.importData = function(event){

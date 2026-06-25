@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arac-servis-v8-menu-fix-1781269800';
+const CACHE_NAME = 'hickorkmaz-garaj-v9-7-mobile-bottom-cache';
 const ASSETS = [
   './',
   './index.html',

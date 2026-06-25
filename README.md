@@ -107,5 +107,33 @@ Bu sürümde tahsilat mantığı ayrıldı:
   - Şahıs/firma adı varsa cari hesap tahsilatı olarak kaydedilir.
 
 
-## V7 Cache + Cari Fix
-vehicleNextKm cache hatası ve Müşteri/Firma cari tahsilat düşmeme sorunu düzeltilmiştir.
+## Cari Şahıs/Firma Bazlı Tahsilat Düzeltmesi
+
+Bu düzeltmede tahsilat hesaplama netleştirildi:
+
+- Şahıs/firma adı yazılıp plaka boş bırakılırsa ödeme sadece o şahıs/firma cari hesabından düşer.
+- Plaka yazılır ve kayıtlıysa ödeme sadece o aracın borcundan düşer.
+- Müşteri/firma borç hesabı artık sadece o müşteri/firma ID'sine bağlı ödemeleri düşer.
+- Genel cari hesabından düşme sorunu giderildi.
+
+Not:
+Daha önce yanlış kaydedilmiş test tahsilatları varsa Ayarlar > Tüm Verileri Sıfırla veya ilgili test kayıtlarını temizleyip yeniden girmen gerekir.
+
+
+## Müşteri/Firma Tahsilat Eşleştirme Fix
+
+Tahsilat ekranındaki alan artık:
+- Müşteri / Firma Adı
+
+Mantık:
+- Plaka kayıtlıysa ödeme sadece araç borcundan düşer.
+- Plaka boşsa ödeme sadece yazılan Müşteri/Firma cari hesabından düşer.
+- Plaka kayıtlı değilse Müşteri/Firma adı varsa cari ödeme olarak işler.
+- Müşteri/Firma adı tam, boşluksuz ve kısmi eşleşmeyle bulunur.
+- Mevcut müşteri/firma bulunamazsa yeni kart oluşturmadan önce onay ister.
+
+
+V9.7 Mobile Bottom Güncelleme:
+- Telefonda hızlı işlemler ekranın altına 2x2 büyük buton olarak alındı.
+- Dashboard üst hızlı işlem butonları mobilde gizlendi.
+- Alt butonlar için mobil boşluk ve dokunma alanları düzenlendi.
