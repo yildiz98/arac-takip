@@ -9,8 +9,8 @@ import { firebaseConfig, ADMIN_EMAILS, PERSONEL_EMAILS } from "./firebase-config
 import {
   getFirestore,
   doc,
+  getDoc,
   setDoc,
-  onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -148,38 +148,41 @@ async function saveCloudData(){
   }
 }
 
-function startSharedDataSync(){
-  if(unsubscribeSharedData) unsubscribeSharedData();
+async function startSharedDataSync(){
+  // Firestore onSnapshot canlı dinleme GitHub Pages/Chrome üzerinde
+  // "Listen/channel 400 Bad Request - Unknown SID" hatası oluşturduğu için kaldırıldı.
+  // Bunun yerine girişte tek seferlik getDoc okuması yapılır.
   cloudDataLoaded = false;
+  isApplyingCloudData = true;
 
-  unsubscribeSharedData = onSnapshot(SHARED_DATA_DOC, async (snap) => {
-    isApplyingCloudData = true;
+  try{
+    const snap = await getDoc(SHARED_DATA_DOC);
 
     if(snap.exists()){
       db = normalizeDb(snap.data());
       localStorage.setItem(STORE_KEY, JSON.stringify(db));
-      cloudDataLoaded = true;
-      isApplyingCloudData = false;
-      if(activeUser) render();
-      return;
+    }else if(hasAnyRecord(db)){
+      await saveCloudData();
     }
 
-    // Firebase'te ortak veri henüz yoksa mevcut cihazdaki eski veriyi ilk ortak havuza taşı.
     cloudDataLoaded = true;
     isApplyingCloudData = false;
-    if(hasAnyRecord(db)) await saveCloudData();
-    if(activeUser) render();
-  }, (err) => {
-    // Firestore veritabanı henüz oluşturulmamışsa veya kurallar izin vermiyorsa
-    // sistem girişte takılı kalmasın; yerel kayıtla çalışmaya devam etsin.
-    isApplyingCloudData = false;
-    cloudDataLoaded = true;
-    console.warn("Ortak kayıt havuzu okunamadı. Sistem yerel kayıtla açıldı:", err);
+
     if(activeUser){
       applyAuthState();
       render();
     }
-  });
+  }catch(err){
+    isApplyingCloudData = false;
+    cloudDataLoaded = true;
+    console.error("Firestore veri okuma hatası:", err?.code, err?.message, err);
+
+    // Firebase geçici hata verse bile sistem yerel verilerle açılsın.
+    if(activeUser){
+      applyAuthState();
+      render();
+    }
+  }
 }
 
 function persist(){
