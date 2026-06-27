@@ -6,6 +6,13 @@ import {
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { firebaseConfig, ADMIN_EMAILS, PERSONEL_EMAILS } from "./firebase-config.js";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  onSnapshot,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 // CANLI SİSTEM: Firebase Auth korunur.
 // ÖNEMLİ: Mevcut aktif sistem verileri silinmesin diye STORE_KEY aynı bırakıldı.
@@ -15,6 +22,8 @@ const DELETE_PASSWORD = "212198";
 
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
+const firestore = getFirestore(firebaseApp);
+const SHARED_DATA_DOC = doc(firestore, "shared", "garageData");
 let activeUser = null;
 let unsubscribeSharedData = null;
 let isApplyingCloudData = false;
@@ -171,6 +180,7 @@ function startSharedDataSync(){
 function persist(){
   db = normalizeDb(db);
   localStorage.setItem(STORE_KEY, JSON.stringify(db));
+  if(activeUser) saveCloudData();
   if(activeUser) render();
 }
 function newId(prefix){ return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7); }
@@ -464,6 +474,7 @@ function setupAuth(){
       };
 
       applyAuthState();
+      startSharedDataSync();
       render();
     });
   }

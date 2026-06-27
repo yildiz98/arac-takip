@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hickorkmaz-garaj-v9-9-1-login';
+const CACHE_NAME = 'hickorkmaz-garaj-v9-9-1-firestore-fix';
 const ASSETS = [
   './',
   './index.html',
