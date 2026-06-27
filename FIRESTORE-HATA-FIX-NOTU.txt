@@ -1,0 +1,14 @@
+Hiçkorkmaz Garaj V10 Firestore Fix
+
+Yapılan düzeltme:
+- Firestore onSnapshot canlı dinleme kaldırıldı.
+- Listen/channel 400 Bad Request / Unknown SID hatasına sebep olan bağlantı tipi iptal edildi.
+- Yerine getDoc ile girişte tek seferlik Firestore okuma eklendi.
+- Kayıt ekleme/güncelleme işlemleri setDoc ile Firebase shared/garageData belgesine yazmaya devam eder.
+- index.html ve service-worker.js cache sürümleri V10 olarak güncellendi.
+
+GitHub'a yükleme:
+1) Bu ZIP içindeki dosyaları GitHub projesine yükle.
+2) Özellikle app.js, index.html ve service-worker.js kesin değiştirilmeli.
+3) Commit sonrası sayfayı şu şekilde aç: https://yildiz98.github.io/arac-takip/?v=10000
+4) Console'da artık firestore Listen/channel isteği görünmemeli.
