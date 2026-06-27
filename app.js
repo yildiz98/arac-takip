@@ -170,10 +170,15 @@ function startSharedDataSync(){
     if(hasAnyRecord(db)) await saveCloudData();
     if(activeUser) render();
   }, (err) => {
+    // Firestore veritabanı henüz oluşturulmamışsa veya kurallar izin vermiyorsa
+    // sistem girişte takılı kalmasın; yerel kayıtla çalışmaya devam etsin.
     isApplyingCloudData = false;
-    console.error("Ortak kayıt havuzu okunamadı:", err);
-    alert("Ortak kayıt havuzu okunamadı. Firestore etkin mi ve kurallar doğru mu kontrol et.");
-    if(activeUser) render();
+    cloudDataLoaded = true;
+    console.warn("Ortak kayıt havuzu okunamadı. Sistem yerel kayıtla açıldı:", err);
+    if(activeUser){
+      applyAuthState();
+      render();
+    }
   });
 }
 
@@ -385,13 +390,13 @@ function applyAuthState(){
   const userText = document.getElementById("activeUserText");
 
   if(!activeUser){
-    if(loginScreen) loginScreen.classList.remove("hidden");
+    if(loginScreen){ loginScreen.classList.remove("hidden"); loginScreen.style.display = "grid"; }
     if(layout) layout.classList.add("locked");
     if(quickActions) quickActions.classList.add("hidden");
     return;
   }
 
-  if(loginScreen) loginScreen.classList.add("hidden");
+  if(loginScreen){ loginScreen.classList.add("hidden"); loginScreen.style.display = "none"; }
   if(layout) layout.classList.remove("locked");
   if(quickActions) quickActions.classList.remove("hidden");
 
