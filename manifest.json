@@ -1,9 +1,9 @@
 {
-  "name": "Hiçkorkmaz Garage V9.9 Professional",
+  "name": "Hiçkorkmaz Garage V7 Final",
   "short_name": "H.Garage",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#071226",
+  "background_color": "#ffffff",
   "theme_color": "#063080",
   "description": "Hiçkorkmaz Garage araç servis ve cari takip sistemi",
   "icons": [

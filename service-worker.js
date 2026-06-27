@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hickorkmaz-garaj-v10-getdoc-no-listen';
+const CACHE_NAME = 'hickorkmaz-garaj-v9-7-mobile-bottom-cache';
 const ASSETS = [
   './',
   './index.html',
